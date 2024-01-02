@@ -1,4 +1,5 @@
-const cardValues = ["Gold", "Silver", "Bronze"];
+const cardValues = ['Gold', 'Silver', 'Bronze'];
+const { v4: uuidv4 } = require('uuid');
 
 // const gameSetup = {
 // cardsInHand: [
@@ -18,43 +19,44 @@ const cardValues = ["Gold", "Silver", "Bronze"];
 // };
 
 function shuffle(array) {
-  let currentIndex = array.length,
-    randomIndex;
+	let currentIndex = array.length,
+		randomIndex;
 
-  while (currentIndex > 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
+	while (currentIndex > 0) {
+		randomIndex = Math.floor(Math.random() * currentIndex);
+		currentIndex--;
 
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
-  }
+		[array[currentIndex], array[randomIndex]] = [
+			array[randomIndex],
+			array[currentIndex],
+		];
+	}
 
-  return array;
+	return array;
 }
 const createCardsInDeck = () => {
-  const cardsInDeck = shuffle(
-    Array(6)
-      .fill("Gold")
-      .concat(Array(8).fill("Silver"))
-      .concat(Array(10).fill("Bronze"))
-  );
-  return cardsInDeck;
+	const deck = [];
+	for (let i = 0; i < 6; i++) {
+		deck.push({ card_type: 'Gold', card_id: uuidv4() });
+	}
+	for (let i = 0; i < 8; i++) {
+		deck.push({ card_type: 'Silver', card_id: uuidv4() });
+	}
+	for (let i = 0; i < 10; i++) {
+		deck.push({ card_type: 'Bronze', card_id: uuidv4() });
+	}
+	return shuffle(deck);
 };
 
-const dealFromDeck = (n) => {
-  return cardsInDeck.splice(0, n);
+const dealFromDeck = (cardsInDeck, n) => {
+	return cardsInDeck.splice(0, n);
 };
 
 const gameSetup = () => {
-  const cardsInDeck = createCardsInDeck();
-  const cardsOnTable = dealFromDeck(5);
+	const cardsInDeck = createCardsInDeck();
+	const cardsOnTable = dealFromDeck(cardsInDeck, 5);
 
-  return {
-    cardsOnTable,
-    cardsInDeck,
-  };
+	return { cardsOnTable, cardsInDeck };
 };
 
 module.exports = { gameSetup, dealFromDeck };
