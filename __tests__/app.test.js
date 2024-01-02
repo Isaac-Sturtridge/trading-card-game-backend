@@ -10,24 +10,33 @@ function waitFor(socket, event) {
 }
 
 describe('my awesome project', () => {
-	let serverSocket, clientSocket;
+	let serverSocket, clientSocket, clientSocket2;
 
 	beforeAll((done) => {
 		// const httpServer = createServer();
 		// io = new Server(server);
 		server.listen(() => {
 			const port = server.address().port;
-			clientSocket = ioc(`http://localhost:${port}`);
+			clientSocket = ioc(`http://localhost:${port}`, {
+				'force new connection': true,
+			});
+			clientSocket2 = ioc(`http://localhost:${port}`, {
+				'force new connection': true,
+			});
 			io.on('connection', (socket) => {
 				serverSocket = socket;
 			});
+			clientSocket.auth = { username: 'player1' };
+			clientSocket2.auth = { username: 'player2' };
 			clientSocket.on('connect', done);
+			clientSocket2.on('connect', done);
 		});
 	});
 
 	afterAll(() => {
 		io.close();
 		clientSocket.disconnect();
+		clientSocket2.disconnect();
 	});
 
 	test('should work', (done) => {
@@ -38,19 +47,37 @@ describe('my awesome project', () => {
 		clientSocket.emit('message', 'hey');
 	});
 
-	test.only('gameStart return a gameSetup with deck and table cards', (done) => {
-		clientSocket.emit('gameStart');
+	test.only('gameStart return a gameSetup with deck, table and hand cards for both players', (done) => {
+		clientSocket2.emit('gameStart');
+
+		let player1SetupData, player2SetupData;
 		clientSocket.on('gameSetup', (setupData) => {
+			player1SetupData = setupData;
 			// console.log(setupData);
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
 			});
 		});
+		clientSocket2.on('gameSetup', (setupData) => {
+			player2SetupData = setupData;
+			// console.log(setupData);
+			expect(setupData).toMatchObject({
+				cardsOnTable: expect.any(Array),
+				cardsInDeck: expect.any(Array),
+			});
+		});
+
+		expect(player1SetupData).toEqual(player2SetupData);
 		clientSocket.on('initialPlayerHand', (playerHand) => {
-			// console.log(playerHand);
+			console.log(playerHand);
 			expect(Array.isArray(playerHand)).toBe(true);
 			expect(playerHand.length).toBe(5);
+		});
+		clientSocket2.on('initialPlayerHand', (playerHand2) => {
+			console.log(playerHand2);
+			expect(Array.isArray(playerHand2)).toBe(true);
+			expect(playerHand2.length).toBe(5);
 			done();
 		});
 	});

@@ -15,31 +15,52 @@ const io = new Server(server, {
 
 app.use(cors());
 
-let cardsInDeck, cardsOnTable, player1Hand;
+let cardsInDeck, cardsOnTable, player1Hand, player2Hand, users;
 
 io.use((socket, next) => {
-	if (io.of('/').sockets.length === 1) {
-		socket.username = 'player1';
-	} else {
-		socket.username = 'player2';
+	const username = socket.handshake.auth.username;
+	if (!username) {
+		return next(new Error('invalid username'));
 	}
+	socket.username = username;
+	// console.log(username);
 	next();
 });
 
+// io.use((socket, next) => {
+// 	if (io.of('/').sockets.length === undefined) {
+// 		socket.username = 'player1';
+// 	} else {
+// 		socket.username = 'player2';
+// 	}
+// 	// console.log(io.of('/').sockets);
+// 	next();
+// });
+
 io.on('connection', (socket) => {
-	//   console.log("user connected");
+	console.log(`${socket.id} has connected!`);
+	users = {};
+	for (let [id, socket] of io.of('/').sockets) {
+		users[socket.username] = id;
+	}
+	// console.log(users);
 
 	socket.on('gameStart', () => {
-		console.log('gameStart');
+		console.log('gameStart:', socket.username, socket.id);
 		result = gameSetup();
 		// console.log(result);
 		cardsInDeck = result['cardsInDeck'];
 		cardsOnTable = result['cardsOnTable'];
 		player1Hand = dealFromDeck(cardsInDeck, 5);
-		// console.log(cardsInDeck, cardsOnTable, player1Hand);
-		socket.emit('gameSetup', { cardsInDeck, cardsOnTable });
+		player2Hand = dealFromDeck(cardsInDeck, 5);
+		// console.log(cardsInDeck, cardsOnTable, player1Hand);]
+		// console.log(io.of('/').sockets.length);
+		io.emit('gameSetup', { cardsInDeck, cardsOnTable });
 		socket.emit('initialPlayerHand', player1Hand);
-		// socket.to(socket.id).emit;
+		// console.log(users['player2'], 'player2');
+		socket.broadcast.emit('initialPlayerHand', player2Hand);
+
+		// console.log(cardsInDeck.length);
 	});
 
 	socket.emit('validating-connection', 'Connected');
@@ -55,6 +76,10 @@ io.on('connection', (socket) => {
 		socket.emit('message', 'hey');
 	});
 });
+// io.use((socket, next) => {
+// 	console.log(io.of('/').sockets);
+// 	next();
+// });
 
 // io.use((socket, next) => {
 //   const sessionID = socket.handshake.auth.sessionID;
