@@ -1,0 +1,26 @@
+{
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "socket.io-client": "^4.7.2"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0",
+    "mongoose": "^8.0.3",
+    "socket.io": "^4.7.2"
+  },
+  "name": "trading-card-game-backend",
+  "description": "Backend project",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node listen.js",
+    "server": "nodemon listen.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
