@@ -1,45 +1,118 @@
-const io = require('socket.io-client');
-const { server } = require('../app');
+const { createServer } = require('node:http');
+const { Server } = require('socket.io');
+const ioc = require('socket.io-client');
+const { server, io } = require('../app');
 
-const testingPort = 3010;
-const socketUrl = `http://localhost:${testingPort}`;
-
-let ioServer;
-let sockets;
-beforeEach(() => {
-	sockets = [];
-	// ioServer = createServer((port = socketUrl));
-	ioServer = server.listen(testingPort);
-});
-afterEach(() => {
-	sockets.forEach((e) => e.disconnect());
-	ioServer.close();
-});
-
-const makeSocket = (id = 0) => {
-	const socket = io.connect(socketUrl, {
-		'reconnection delay': 0,
-		'reopen delay': 0,
-		'force new connection': true,
-		transports: ['websocket'],
+function waitFor(socket, event) {
+	return new Promise((resolve) => {
+		socket.once(event, resolve);
 	});
-	socket.on('connect', () => {
-		// console.log(`[client ${id}] connected`);
-	});
-	socket.on('disconnect', () => {
-		// console.log(`[client ${id}] disconnected`);
-	});
-	sockets.push(socket);
-	return socket;
-};
+}
 
-describe('server', function () {
-	it('should echo a message to a client', (done) => {
-		const socket = makeSocket();
-		socket.emit('message', 'hello world');
-		socket.on('message', (msg) => {
-			expect(msg).toBe('hey');
+describe('my awesome project', () => {
+	let serverSocket, clientSocket, clientSocket2;
+
+	beforeAll((done) => {
+		// const httpServer = createServer();
+		// io = new Server(server);
+		server.listen(() => {
+			const port = server.address().port;
+			clientSocket = ioc(`http://localhost:${port}`, {
+				'force new connection': true,
+			});
+			clientSocket2 = ioc(`http://localhost:${port}`, {
+				'force new connection': true,
+			});
+			io.on('connection', (socket) => {
+				serverSocket = socket;
+			});
+			clientSocket.auth = { username: 'player1' };
+			clientSocket2.auth = { username: 'player2' };
+			clientSocket.on('connect', done);
+			clientSocket2.on('connect', done);
+		});
+	});
+
+	afterAll(() => {
+		io.close();
+		clientSocket.disconnect();
+		clientSocket2.disconnect();
+	});
+
+	test('should work', (done) => {
+		clientSocket.on('message', (arg) => {
+			expect(arg).toBe('hey');
+			done();
+		});
+		clientSocket.emit('message', 'hey');
+	});
+
+	test.only('gameStart return a gameSetup with deck, table and hand cards for both players', (done) => {
+		clientSocket2.emit('gameStart');
+
+		let player1SetupData, player2SetupData;
+		clientSocket.on('gameSetup', (setupData) => {
+			player1SetupData = setupData;
+			// console.log(setupData);
+			expect(setupData).toMatchObject({
+				cardsOnTable: expect.any(Array),
+				cardsInDeck: expect.any(Array),
+			});
+		});
+		clientSocket2.on('gameSetup', (setupData) => {
+			player2SetupData = setupData;
+			// console.log(setupData);
+			expect(setupData).toMatchObject({
+				cardsOnTable: expect.any(Array),
+				cardsInDeck: expect.any(Array),
+			});
+		});
+
+		expect(player1SetupData).toEqual(player2SetupData);
+		clientSocket.on('initialPlayerHand', (playerHand) => {
+			console.log(playerHand);
+			expect(Array.isArray(playerHand)).toBe(true);
+			expect(playerHand.length).toBe(5);
+		});
+		clientSocket2.on('initialPlayerHand', (playerHand2) => {
+			console.log(playerHand2);
+			expect(Array.isArray(playerHand2)).toBe(true);
+			expect(playerHand2.length).toBe(5);
 			done();
 		});
 	});
+
+	// test("should send back and user id and session id", () => {
+	//   clientSocket.on("connection", (arg) => {
+	//     clientSocket.on("session", (data) => {
+	//       console.log(data);
+	//     });
+	//     console.log(arg);
+	//     done();
+	//   });
+	// });
+
+	//   test("should work with an acknowledgement", (done) => {
+	//     serverSocket.on("hi", (cb) => {
+	//       cb("hola");
+	//     });
+	//     clientSocket.emit("hi", (arg) => {
+	//       expect(arg).toBe("hola");
+	//       done();
+	//     });
+	//   });
+
+	//   test("should work with emitWithAck()", async () => {
+	//     serverSocket.on("foo", (cb) => {
+	//       cb("bar");
+	//     });
+	//     const result = await clientSocket.emitWithAck("foo");
+	//     expect(result).toBe("bar");
+	//   });
+
+	//   test("should work with waitFor()", () => {
+	//     clientSocket.emit("baz");
+
+	//     return waitFor(serverSocket, "baz");
+	//   });
 });
