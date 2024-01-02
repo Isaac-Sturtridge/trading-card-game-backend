@@ -2,6 +2,7 @@ const express = require("express");
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const { gameSetup, dealFromDeck } = require("./utils/gameSetup");
 
 const app = express();
 const server = createServer(app);
@@ -14,11 +15,24 @@ const io = new Server(server, {
 
 app.use(cors());
 
+let { cardsInDeck, cardsOnTable } = gameSetup();
+let player1Hand = dealFromDeck(5);
+
+io.use((socket, next) => {
+  if (io.of("/").sockets.length === 1) {
+    socket.username = "player1";
+  } else {
+    socket.username = "player2";
+  }
+  next();
+});
+
 io.on("connection", (socket) => {
   //   console.log("user connected");
 
   socket.on("gameStart", () => {
-    socket.emit("gameSetup");
+    io.emit("gameSetup", setup);
+    io.emit("initialPlayerHand", playerHand);
   });
 
   socket.emit("validating-connection", "Connected");

@@ -33,7 +33,6 @@ function shuffle(array) {
 
   return array;
 }
-
 const createCardsInDeck = () => {
   const cardsInDeck = shuffle(
     Array(6)
@@ -44,11 +43,18 @@ const createCardsInDeck = () => {
   return cardsInDeck;
 };
 
-const gameSetup = () => {
-  const result = {};
-  const cardsInHands = [];
-  const cardsOnTable = [];
-  createCardsInDeck();
+const dealFromDeck = (n) => {
+  return cardsInDeck.splice(0, n);
 };
 
-gameSetup();
+const gameSetup = () => {
+  const cardsInDeck = createCardsInDeck();
+  const cardsOnTable = dealFromDeck(5);
+
+  return {
+    cardsOnTable,
+    cardsInDeck,
+  };
+};
+
+module.exports = { gameSetup, dealFromDeck };
