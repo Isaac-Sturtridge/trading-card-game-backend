@@ -54,6 +54,11 @@ io.on('connection', (socket) => {
 		console.log(data);
 		socket.emit('message', 'hey');
 	});
+
+	socket.on('endTurn', () => {
+		socket.emit('playerTurn', false);
+		socket.broadcast.emit('playerTurn', true);
+	});
 });
 
 module.exports = { server, io };
