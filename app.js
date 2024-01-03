@@ -134,6 +134,10 @@ io.on('connection', (socket) => {
 		});
 	});
 
+	socket.on('endTurn', () => {
+		socket.emit('playerTurn', false);
+		socket.broadcast.emit('playerTurn', true);
+	});
 	socket.on('disconnect', async () => {
 		const matchingSockets = await io.in(socket.userID).allSockets();
 		const isDisconnected = matchingSockets.size === 0;

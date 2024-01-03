@@ -98,6 +98,19 @@ describe('my awesome project', () => {
 		});
 	});
 
+	test('endTurn', (done) => {
+		clientSocket.emit('endTurn');
+		clientSocket.on('playerTurn', (data) => {
+			console.log('playerTurn 1');
+			expect(data).toBe(false);
+		});
+		clientSocket2.on('playerTurn', (data) => {
+			console.log('playerTurn 2');
+			expect(data).toBe(true);
+			done();
+		});
+	});
+
 	// test("should send back and user id and session id", () => {
 	//   clientSocket.on("connection", (arg) => {
 	//     clientSocket.on("session", (data) => {
