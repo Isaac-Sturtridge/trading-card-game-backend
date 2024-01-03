@@ -3,6 +3,7 @@ const { createServer } = require('node:http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { createCardsInDeck, dealFromDeck } = require('./utils/gameSetup');
+const {getStats} = require('./controllers/api.controllers')
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
 
@@ -16,6 +17,8 @@ const io = new Server(server, {
 });
 
 app.use(cors());
+
+app.get('/stats', getStats)
 
 const { InMemorySessionStore } = require('./sessionStore');
 const sessionStore = new InMemorySessionStore();
