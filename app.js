@@ -70,7 +70,7 @@ io.on('connection', (socket) => {
 			connected: session.connected,
 		});
 	});
-	socket.emit('users', users);
+	io.sockets.emit('users', users);
 	// console.log(users);
 
 	// notify existing users
