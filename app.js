@@ -2,7 +2,11 @@ const express = require('express');
 const { createServer } = require('node:http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { createCardsInDeck, dealFromDeck, cardValues } = require('./utils/gameSetup');
+const {
+	createCardsInDeck,
+	dealFromDeck,
+	cardValues,
+} = require('./utils/gameSetup');
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
 
@@ -91,7 +95,7 @@ io.on('connection', (socket) => {
 				gameData.cardsInDeck,
 				5
 			);
-            gameData.playerScores[session.userID] = 0;
+			gameData.playerScores[session.userID] = 0;
 			socket.to(session.userID).emit('gameSetup', {
 				cardsInDeck: gameData.cardsInDeck,
 				cardsOnTable: gameData.cardsOnTable,
@@ -110,7 +114,7 @@ io.on('connection', (socket) => {
 		// take card form table and then move to hand,
 		for (let card of cards) {
 			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
-				return element.card_type === card.card_type;
+				return element.card_id === card.card_id;
 			});
 			cardRemoved = gameData.cardsOnTable.splice(indexToRemove, 1);
 			gameData.playerHands[socket.userID].push(...cardRemoved);
@@ -134,27 +138,37 @@ io.on('connection', (socket) => {
 		});
 	});
 
-    socket.on('sellCardFromHand', ({cards}) => {
-        // remove card from hand
-        for (let card of cards) {
-            indexToRemove = gameData.playerHands[socket.userID].findIndex((element) => {
-                return element.card_type === card.card_type;
-            })
-            gameData.playerHands[socket.userID].splice(indexToRemove, 1)
-            // score update
-            gameData.playerScores[socket.userID] += cardValues[card.card_type]
-        }
+	socket.on('sellCardFromHand', ({ cards }) => {
+		// remove card from hand
+		for (let card of cards) {
+			indexToRemove = gameData.playerHands[socket.userID].findIndex(
+				(element) => {
+					return element.card_id === card.card_id;
+				}
+			);
+			if (indexToRemove !== -1) {
+				CardRemoved = gameData.playerHands[socket.userID].splice(
+					indexToRemove,
+					1
+				);
+				// score update
+				gameData.playerScores[socket.userID] +=
+					cardValues[CardRemoved[0].card_type];
+			} else {
+				// error selling a card which is not in the hand
+			}
+		}
 
-        console.log(gameData.playerScores)
+		console.log(gameData.playerScores);
 
-        // send the new hand to player and update the scores
-        socket.emit('playerHandUpdate', {
+		// send the new hand to player and update the scores
+		socket.emit('playerHandUpdate', {
 			playerHand: gameData.playerHands[socket.userID],
 		});
-        io.sockets.emit('scoreUpdate', {
-            playerScores: gameData.playerScores
-        })
-    })
+		io.sockets.emit('scoreUpdate', {
+			playerScores: gameData.playerScores,
+		});
+	});
 
 	socket.on('endTurn', () => {
 		socket.emit('playerTurn', false);
@@ -175,6 +189,6 @@ io.on('connection', (socket) => {
 			console.log(socket.username, 'disconnected');
 		}
 	});
-})
+});
 
 module.exports = { server, io };

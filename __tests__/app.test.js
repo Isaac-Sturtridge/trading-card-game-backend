@@ -1,8 +1,5 @@
-const { createServer } = require('node:http');
-const { Server } = require('socket.io');
 const ioc = require('socket.io-client');
 const { server, io } = require('../app');
-const { exec } = require('node:child_process');
 
 function waitFor(socket, event) {
 	return new Promise((resolve) => {
@@ -29,12 +26,12 @@ describe('my awesome project', () => {
 			});
 			clientSocket.auth = { username: 'player1' };
 			clientSocket2.auth = { username: 'player2' };
-            clientSocket.on('session', (data) => {
-                clientSocket.userID = data.userID
-            })
-            clientSocket2.on('session', (data) => {
-                clientSocket2.userID = data.userID
-            })
+			clientSocket.on('session', (data) => {
+				clientSocket.userID = data.userID;
+			});
+			clientSocket2.on('session', (data) => {
+				clientSocket2.userID = data.userID;
+			});
 			clientSocket.on('connect', done);
 			clientSocket2.on('connect', done);
 			// clientSocket.on('session', (res) => {
@@ -56,7 +53,7 @@ describe('my awesome project', () => {
 		clientSocket.on('gameSetup', (setupData) => {
 			player1SetupData = setupData;
 			console.log('player1 got gameSetup');
-            // console.log(setupData.playerHand, "<- player hand")
+			// console.log(setupData.playerHand, "<- player hand")
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
@@ -76,7 +73,9 @@ describe('my awesome project', () => {
 	});
 
 	test('addCardToHand', (done) => {
-		const payload = { cards: [{ card_type: 'Gold' }] };
+		const payload = {
+			cards: [{ card_id: '75754222-025c-4046-ae89-5f69c4eef65d' }], // a gold card from the table
+		};
 		clientSocket2.emit('addCardToHand', payload);
 		clientSocket2.on('playerHandUpdate', (data) => {
 			// console.log('playerHandUpdate');
@@ -104,30 +103,32 @@ describe('my awesome project', () => {
 		});
 	});
 
-    test('sellCardFromHand', (done) => {
-        const payload =  { cards: [{card_type: 'Silver'}]};
-        clientSocket.emit('sellCardFromHand', payload)
-        clientSocket.on('playerHandUpdate', (data) => {
-            // console.log(data)
-            expect(data).toMatchObject({
-                playerHand: expect.any(Array)
-            })
-            expect(data.playerHand.length).toBe(4)
-        })
-        clientSocket2.on('scoreUpdate', (data) => { 
-            // console.log(data, "<- score data")
-            // console.log(clientSocket2.userID, "client 2 user id")
-            // console.log('client socket 2 receiving scores')
-            expect(data.playerScores[clientSocket2.userID]).toBe(0)
-            expect(data.playerScores[clientSocket.userID]).toBe(8)
-        })
-        clientSocket.on('scoreUpdate', (data) => { 
-            // console.log('client socket 1 receiving scores')
-            expect(data.playerScores[clientSocket.userID]).toBe(8)
-            expect(data.playerScores[clientSocket2.userID]).toBe(0)
-            done();
-        })
-    });
+	test('sellCardFromHand', (done) => {
+		const payload = {
+			cards: [{ card_id: '00222345-73e2-41a9-82c2-b91bb452acc8' }],
+		};
+		clientSocket.emit('sellCardFromHand', payload);
+		clientSocket.on('playerHandUpdate', (data) => {
+			// console.log(data)
+			expect(data).toMatchObject({
+				playerHand: expect.any(Array),
+			});
+			expect(data.playerHand.length).toBe(4);
+		});
+		clientSocket2.on('scoreUpdate', (data) => {
+			// console.log(data, "<- score data")
+			// console.log(clientSocket2.userID, "client 2 user id")
+			// console.log('client socket 2 receiving scores')
+			expect(data.playerScores[clientSocket2.userID]).toBe(0);
+			expect(data.playerScores[clientSocket.userID]).toBe(6);
+		});
+		clientSocket.on('scoreUpdate', (data) => {
+			// console.log('client socket 1 receiving scores')
+			expect(data.playerScores[clientSocket.userID]).toBe(6);
+			expect(data.playerScores[clientSocket2.userID]).toBe(0);
+			done();
+		});
+	});
 
 	test('endTurn', (done) => {
 		clientSocket.emit('endTurn');
