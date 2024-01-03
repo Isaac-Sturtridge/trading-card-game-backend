@@ -72,8 +72,8 @@ describe('my awesome project', () => {
 	test('addCardToHand', (done) => {
 		const payload = { cards: [{ card_type: 'Gold' }] };
 		clientSocket2.emit('addCardToHand', payload);
-		clientSocket2.on('cardAdded', (data) => {
-			console.log('cardAdded');
+		clientSocket2.on('playerHandUpdate', (data) => {
+			console.log('playerHandUpdate');
 			expect(data).toMatchObject({
 				playerHand: expect.any(Array),
 			});

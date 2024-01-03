@@ -108,7 +108,6 @@ io.on('connection', (socket) => {
 
 	socket.on('addCardToHand', ({ cards }) => {
 		// take card form table and then move to hand,
-
 		for (let card of cards) {
 			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
 				return element.card_type === card.card_type;
@@ -119,29 +118,20 @@ io.on('connection', (socket) => {
 		}
 		// console.log(gameData.cardsOnTable);
 		// console.log(gameData.playerHands[socket.userID]);
+
 		// take card from deck and move to table
 		gameData.cardsOnTable.push(
 			...dealFromDeck(gameData.cardsInDeck, cards.length)
 		);
 		// console.log(gameData.cardsOnTable);
+
 		// send new hand to player
 		io.sockets.emit('tableUpdate', {
 			cardsOnTable: gameData.cardsOnTable,
 		});
-		socket.emit('cardAdded', {
+		socket.emit('playerHandUpdate', {
 			playerHand: gameData.playerHands[socket.userID],
 		});
-		// // send new table to both players
-		// socket.broadcast.emit('tableUpdate', {
-		// 	cardsOnTable: gameData.cardsOnTable,
-		// });
-		// socket.broadcast.emit('tableUpdate', {
-		// 	cardsOnTable: gameData.cardsOnTable,
-		// });
-		// userID = sessionStore.findSession(socket.sessionID).userID;
-		// gameData.playerHands.userID = gameData.playerHands.userID.
-		// console.log(socket.sessionID, socket.username, socket.userID);
-		// console.log(cards);
 	});
 
 	socket.on('disconnect', async () => {
@@ -156,6 +146,7 @@ io.on('connection', (socket) => {
 				username: socket.username,
 				connected: false,
 			});
+			console.log(socket.username, 'disconnected');
 		}
 	});
 });
