@@ -27,7 +27,8 @@ const createCardsInDeck = () => {
 	for (let i = 0; i < 10; i++) {
 		deck.push({ card_type: 'Bronze', card_id: uuidv4() });
 	}
-	return shuffle(deck);
+	// return shuffle(deck);
+	return deck;
 };
 
 const dealFromDeck = (cardsInDeck, n) => {

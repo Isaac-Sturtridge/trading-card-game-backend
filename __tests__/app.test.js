@@ -2,6 +2,7 @@ const { createServer } = require('node:http');
 const { Server } = require('socket.io');
 const ioc = require('socket.io-client');
 const { server, io } = require('../app');
+const { exec } = require('node:child_process');
 
 function waitFor(socket, event) {
 	return new Promise((resolve) => {
@@ -30,6 +31,9 @@ describe('my awesome project', () => {
 			clientSocket2.auth = { username: 'player2' };
 			clientSocket.on('connect', done);
 			clientSocket2.on('connect', done);
+			// clientSocket.on('session', (res) => {
+			// 	console.log(res);
+			// });
 		});
 	});
 
@@ -39,21 +43,14 @@ describe('my awesome project', () => {
 		clientSocket2.disconnect();
 	});
 
-	test('should work', (done) => {
-		clientSocket.on('message', (arg) => {
-			expect(arg).toBe('hey');
-			done();
-		});
-		clientSocket.emit('message', 'hey');
-	});
-
-	test.only('gameStart return a gameSetup with deck, table and hand cards for both players', (done) => {
+	test('gameStart return a gameSetup with deck, table and hand cards for both players', (done) => {
 		clientSocket.emit('gameStart');
 
 		let player1SetupData, player2SetupData;
 		clientSocket.on('gameSetup', (setupData) => {
 			player1SetupData = setupData;
-			console.log(setupData);
+			console.log('player1 got gameSetup');
+
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
@@ -62,12 +59,41 @@ describe('my awesome project', () => {
 		});
 		clientSocket2.on('gameSetup', (setupData) => {
 			player2SetupData = setupData;
-			console.log(setupData);
+			console.log('player2 got gameSetup');
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
 				playerHand: expect.any(Array),
 			});
+			done();
+		});
+	});
+
+	test('addCardToHand', (done) => {
+		const payload = { cards: [{ card_type: 'Gold' }] };
+		clientSocket2.emit('addCardToHand', payload);
+		clientSocket2.on('cardAdded', (data) => {
+			console.log('cardAdded');
+			expect(data).toMatchObject({
+				playerHand: expect.any(Array),
+			});
+			expect(data.playerHand.length).toBe(6);
+		});
+		clientSocket.on('tableUpdate', (data) => {
+			console.log('tableUpdate 1');
+
+			expect(data).toMatchObject({
+				cardsOnTable: expect.any(Array),
+			});
+			expect(data.cardsOnTable.length).toBe(5);
+		});
+		clientSocket2.on('tableUpdate', (data) => {
+			console.log('tableUpdate 2');
+
+			expect(data).toMatchObject({
+				cardsOnTable: expect.any(Array),
+			});
+			expect(data.cardsOnTable.length).toBe(5);
 			done();
 		});
 	});

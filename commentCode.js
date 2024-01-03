@@ -1,3 +1,15 @@
+//////////////
+
+// Reference
+
+///////////////
+
+// socket.emit - only the sender
+// socket.broadcast.emit - everyone expect the sender
+// io.sockets.emit - everyone
+
+//////////////////////////////////////
+
 // io.use((socket, next) => {
 // 	console.log(io.of('/').sockets);
 // 	next();
@@ -50,7 +62,3 @@ io.use((socket, next) => {
 // 	// console.log(io.of('/').sockets);
 // 	next();
 // });
-
-// socket.emit - only the sender
-// socket.broadcast.emit - everyone expect the sender
-// io.emit - everyone
