@@ -1,22 +1,4 @@
-const cardValues = ['Gold', 'Silver', 'Bronze'];
 const { v4: uuidv4 } = require('uuid');
-
-// const gameSetup = {
-// cardsInHand: [
-//     {
-//         card_id: 'string',
-//         card_type: 'string',
-//     }, ...
-
-// ],
-// cardsOnTable: [
-//     {
-//         card_id: 'string',
-//         card_type: 'string',
-//     }, ...
-
-// ]
-// };
 
 function shuffle(array) {
 	let currentIndex = array.length,
@@ -52,11 +34,4 @@ const dealFromDeck = (cardsInDeck, n) => {
 	return cardsInDeck.splice(0, n);
 };
 
-const gameSetup = () => {
-	const cardsInDeck = createCardsInDeck();
-	const cardsOnTable = dealFromDeck(cardsInDeck, 5);
-
-	return { cardsOnTable, cardsInDeck };
-};
-
-module.exports = { gameSetup, dealFromDeck };
+module.exports = { createCardsInDeck, dealFromDeck };

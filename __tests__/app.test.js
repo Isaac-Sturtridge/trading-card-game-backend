@@ -48,36 +48,26 @@ describe('my awesome project', () => {
 	});
 
 	test.only('gameStart return a gameSetup with deck, table and hand cards for both players', (done) => {
-		clientSocket2.emit('gameStart');
+		clientSocket.emit('gameStart');
 
 		let player1SetupData, player2SetupData;
 		clientSocket.on('gameSetup', (setupData) => {
 			player1SetupData = setupData;
-			// console.log(setupData);
+			console.log(setupData);
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
+				playerHand: expect.any(Array),
 			});
 		});
 		clientSocket2.on('gameSetup', (setupData) => {
 			player2SetupData = setupData;
-			// console.log(setupData);
+			console.log(setupData);
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
 				cardsInDeck: expect.any(Array),
+				playerHand: expect.any(Array),
 			});
-		});
-
-		expect(player1SetupData).toEqual(player2SetupData);
-		clientSocket.on('initialPlayerHand', (playerHand) => {
-			console.log(playerHand);
-			expect(Array.isArray(playerHand)).toBe(true);
-			expect(playerHand.length).toBe(5);
-		});
-		clientSocket2.on('initialPlayerHand', (playerHand2) => {
-			console.log(playerHand2);
-			expect(Array.isArray(playerHand2)).toBe(true);
-			expect(playerHand2.length).toBe(5);
 			done();
 		});
 	});
