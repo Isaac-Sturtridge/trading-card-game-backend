@@ -35,4 +35,10 @@ const dealFromDeck = (cardsInDeck, n) => {
 	return cardsInDeck.splice(0, n);
 };
 
-module.exports = { createCardsInDeck, dealFromDeck };
+const cardValues = {
+	'Gold': 10,
+	'Silver': 8,
+	'Bronze': 6
+}
+
+module.exports = { createCardsInDeck, dealFromDeck, cardValues };

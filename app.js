@@ -2,7 +2,7 @@ const express = require('express');
 const { createServer } = require('node:http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { createCardsInDeck, dealFromDeck } = require('./utils/gameSetup');
+const { createCardsInDeck, dealFromDeck, cardValues } = require('./utils/gameSetup');
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
 
@@ -21,7 +21,7 @@ const { InMemorySessionStore } = require('./sessionStore');
 const sessionStore = new InMemorySessionStore();
 
 let cardsInDeck, cardsOnTable, player1Hand, player2Hand;
-let gameData = { playerHands: {} };
+let gameData = { playerHands: {}, playerScores: {} };
 
 io.use((socket, next) => {
 	const sessionID = socket.handshake.auth.sessionID;
@@ -91,7 +91,7 @@ io.on('connection', (socket) => {
 				gameData.cardsInDeck,
 				5
 			);
-
+            gameData.playerScores[session.userID] = 0;
 			socket.to(session.userID).emit('gameSetup', {
 				cardsInDeck: gameData.cardsInDeck,
 				cardsOnTable: gameData.cardsOnTable,
@@ -134,6 +134,28 @@ io.on('connection', (socket) => {
 		});
 	});
 
+    socket.on('sellCardFromHand', ({cards}) => {
+        // remove card from hand
+        for (let card of cards) {
+            indexToRemove = gameData.playerHands[socket.userID].findIndex((element) => {
+                return element.card_type === card.card_type;
+            })
+            gameData.playerHands[socket.userID].splice(indexToRemove, 1)
+            // score update
+            gameData.playerScores[socket.userID] += cardValues[card.card_type]
+        }
+
+        console.log(gameData.playerScores)
+
+        // send the new hand to player and update the scores
+        socket.emit('playerHandUpdate', {
+			playerHand: gameData.playerHands[socket.userID],
+		});
+        io.sockets.emit('scoreUpdate', {
+            playerScores: gameData.playerScores
+        })
+    })
+
 	socket.on('endTurn', () => {
 		socket.emit('playerTurn', false);
 		socket.broadcast.emit('playerTurn', true);
@@ -153,6 +175,6 @@ io.on('connection', (socket) => {
 			console.log(socket.username, 'disconnected');
 		}
 	});
-});
+})
 
 module.exports = { server, io };
