@@ -10,7 +10,6 @@ const server = createServer(app);
 const io = new Server(server, {
 	cors: {
 		origin: 'http://localhost:5173',
-		origin: 'http://localhost:5173',
 	},
 });
 
@@ -20,10 +19,10 @@ let cardsInDeck, cardsOnTable, player1Hand, player2Hand, users;
 
 io.use((socket, next) => {
 	const username = socket.handshake.auth.username;
-	if (!username) {
-		return next(new Error('invalid username'));
-	}
-	socket.username = username;
+	// if (!username) {
+	// 	return next(new Error('invalid username'));
+	// }
+	// socket.username = username;
 	// console.log(username);
 	next();
 });
