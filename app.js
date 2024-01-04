@@ -97,15 +97,17 @@ io.on('connection', (socket) => {
 			);
 			gameData.playerScores[session.userID] = 0;
 			socket.to(session.userID).emit('gameSetup', {
-				cardsInDeck: gameData.cardsInDeck,
+				// cardsInDeck: gameData.cardsInDeck,
 				cardsOnTable: gameData.cardsOnTable,
 				playerHand: gameData.playerHands[session.userID],
+				playerTurn: false,
 			});
 		});
 		socket.emit('gameSetup', {
-			cardsInDeck: gameData.cardsInDeck,
+			// cardsInDeck: gameData.cardsInDeck,
 			cardsOnTable: gameData.cardsOnTable,
 			playerHand: gameData.playerHands[socket.userID],
+			playerTurn: true,
 		});
 		// console.log(gameData);
 	});
