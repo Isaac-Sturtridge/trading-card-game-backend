@@ -140,6 +140,42 @@ io.on('connection', (socket) => {
 		});
 	});
 
+	socket.on('cardSwap', ({ handCards, tableCards }) => {
+		// check if the handCards and the tableCards exist in the server copy
+		//remove from the hand and add to the table
+		for (let card of handCards) {
+			indexToRemove = gameData.playerHands[socket.userID].findIndex(
+				(element) => {
+					return element.card_id === card.card_id;
+				}
+			);
+			cardRemoved = gameData.playerHands[socket.userID].splice(
+				indexToRemove,
+				1
+			);
+			gameData.cardsOnTable.push(...cardRemoved);
+			// console.log(cardRemoved);
+		}
+		// remove from the table and add to the hand
+		for (let card of tableCards) {
+			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
+				return element.card_id === card.card_id;
+			});
+			cardRemoved = gameData.cardsOnTable.splice(indexToRemove, 1);
+			gameData.playerHands[socket.userID].push(...cardRemoved);
+			// console.log(cardRemoved);
+		}
+
+		// send the new table to both players
+		io.sockets.emit('tableUpdate', {
+			cardsOnTable: gameData.cardsOnTable,
+		});
+		// send the new hand to emitting player
+		socket.emit('playerHandUpdate', {
+			playerHand: gameData.playerHands[socket.userID],
+		});
+	});
+
 	socket.on('sellCardFromHand', ({ cards }) => {
 		// remove card from hand
 		for (let card of cards) {

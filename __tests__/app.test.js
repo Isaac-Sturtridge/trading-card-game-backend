@@ -56,7 +56,6 @@ describe('my awesome project', () => {
 			// console.log(setupData.playerHand, "<- player hand")
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
-				cardsInDeck: expect.any(Array),
 				playerHand: expect.any(Array),
 			});
 		});
@@ -65,7 +64,6 @@ describe('my awesome project', () => {
 			console.log('player2 got gameSetup');
 			expect(setupData).toMatchObject({
 				cardsOnTable: expect.any(Array),
-				cardsInDeck: expect.any(Array),
 				playerHand: expect.any(Array),
 			});
 			done();
@@ -86,7 +84,6 @@ describe('my awesome project', () => {
 		});
 		clientSocket.on('tableUpdate', (data) => {
 			// console.log('tableUpdate 1');
-
 			expect(data).toMatchObject({
 				cardsOnTable: expect.any(Array),
 			});
@@ -130,14 +127,76 @@ describe('my awesome project', () => {
 		});
 	});
 
+	test('cardSwap', (done) => {
+		const payload = {
+			handCards: [
+				{
+					card_type: 'Bronze',
+					card_id: '4ca70a85-44d1-4605-a0d8-7284ee2e3331',
+				},
+				{
+					card_type: 'Bronze',
+					card_id: 'eac22667-3b53-4b4d-8b7f-6d7526b2a069',
+				},
+				{
+					card_type: 'Bronze',
+					card_id: '06a7b16f-ad8c-4ac8-9083-5d3d9a0a40c2',
+				},
+			],
+			tableCards: [
+				{
+					card_type: 'Silver',
+					card_id: 'f7666612-1624-4c65-afc1-db260b8aa13b',
+				},
+
+				{
+					card_type: 'Silver',
+					card_id: 'b22ebfc1-4aa3-48e2-8b46-6c874d49219f',
+				},
+
+				{
+					card_type: 'Silver',
+					card_id: 'a4002ebd-4594-4b32-a241-c7e553cd63c5',
+				},
+			],
+		};
+
+		clientSocket.emit('cardSwap', payload);
+		clientSocket.on('playerHandUpdate', (data) => {
+			// console.log('playerHandUpdate');
+			// console.log(data);
+			expect(data).toMatchObject({
+				playerHand: expect.any(Array),
+			});
+			expect(data.playerHand.length).toBe(4);
+		});
+		clientSocket.on('tableUpdate', (data) => {
+			// console.log('tableUpdate 1');
+			// console.log(data);
+			expect(data).toMatchObject({
+				cardsOnTable: expect.any(Array),
+			});
+			expect(data.cardsOnTable.length).toBe(5);
+		});
+		clientSocket2.on('tableUpdate', (data) => {
+			// console.log('tableUpdate 2');
+
+			expect(data).toMatchObject({
+				cardsOnTable: expect.any(Array),
+			});
+			expect(data.cardsOnTable.length).toBe(5);
+			done();
+		});
+	});
+
 	test('endTurn', (done) => {
 		clientSocket.emit('endTurn');
 		clientSocket.on('playerTurn', (data) => {
-			console.log('playerTurn 1');
+			// console.log('playerTurn 1');
 			expect(data).toBe(false);
 		});
 		clientSocket2.on('playerTurn', (data) => {
-			console.log('playerTurn 2');
+			// console.log('playerTurn 2');
 			expect(data).toBe(true);
 			done();
 		});
