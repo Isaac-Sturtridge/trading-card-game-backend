@@ -5,8 +5,8 @@ const cors = require('cors');
 const {
 	createCardsInDeck,
 	dealFromDeck,
-	cardValues,
 	createBonusPoints,
+	tokenValues,
 } = require('./utils/gameSetup');
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
@@ -92,6 +92,7 @@ io.on('connection', (socket) => {
 		gameData.cardsInDeck = createCardsInDeck();
 		gameData.cardsOnTable = dealFromDeck(gameData.cardsInDeck, 5);
 		gameData.bonusPoints = createBonusPoints();
+		gameData.tokenValues = tokenValues;
 		sessionStore.findAllSessions().forEach((session) => {
 			gameData.playerHands[session.userID] = dealFromDeck(
 				gameData.cardsInDeck,
@@ -99,7 +100,7 @@ io.on('connection', (socket) => {
 			);
 			gameData.playerScores[session.userID] = 0;
 			socket.to(session.userID).emit('gameSetup', {
-				// cardsInDeck: gameData.cardsInDeck,
+				tokenValues: gameData.tokenValues,
 				cardsOnTable: gameData.cardsOnTable,
 				playerHand: gameData.playerHands[session.userID],
 				playerTurn: false,
@@ -107,6 +108,7 @@ io.on('connection', (socket) => {
 		});
 		socket.emit('gameSetup', {
 			// cardsInDeck: gameData.cardsInDeck,
+			tokenValues: gameData.tokenValues,
 			cardsOnTable: gameData.cardsOnTable,
 			playerHand: gameData.playerHands[socket.userID],
 			playerTurn: true,
@@ -180,6 +182,7 @@ io.on('connection', (socket) => {
 
 	socket.on('sellCardFromHand', ({ cards }) => {
 		// remove card from hand
+		let salePoints = 0;
 		for (let card of cards) {
 			indexToRemove = gameData.playerHands[socket.userID].findIndex(
 				(element) => {
@@ -192,11 +195,26 @@ io.on('connection', (socket) => {
 					1
 				);
 				// score update
-				gameData.playerScores[socket.userID] +=
-					cardValues[CardRemoved[0].card_type];
+				try {
+					salePoints +=
+						gameData.tokenValues[CardRemoved[0].card_type].pop();
+				} catch (error) {
+					// no points for the card if the tokens have run out
+				}
 			} else {
 				// error selling a card which is not in the hand
 			}
+		}
+
+		// add salePoints
+		gameData.playerScores[socket.userID] += salePoints;
+		// add bonusPoints
+		let saleBonusPoints = 0;
+		try {
+			saleBonusPoints = gameData.bonusPoints[cards.length].pop();
+			gameData.playerScores[socket.userID] += saleBonusPoints;
+		} catch (error) {
+			// if no bonus points are left do nothing
 		}
 
 		console.log(gameData.playerScores);
@@ -207,6 +225,12 @@ io.on('connection', (socket) => {
 		});
 		io.sockets.emit('scoreUpdate', {
 			playerScores: gameData.playerScores,
+			saleStats: {
+				username: socket.username,
+				userID: socket.userID,
+				saleBonusPoints,
+				salePoints,
+			},
 		});
 	});
 

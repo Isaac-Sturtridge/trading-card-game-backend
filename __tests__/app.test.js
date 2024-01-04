@@ -36,7 +36,11 @@ beforeAll((done) => {
 	});
 });
 
-afterAll(() => {
+afterAll(async () => {
+	p1Socket.emit('data');
+	d = await waitFor(p1Socket, 'data');
+	console.log(d);
+
 	io.close();
 	p1Socket.disconnect();
 	p2Socket.disconnect();
@@ -98,8 +102,13 @@ test('addCardToHand', async () => {
 test('sellCardFromHand', async () => {
 	console.log('sellCardFromHand test');
 	const payload = {
-		cards: [{ card_id: '00222345-73e2-41a9-82c2-b91bb452acc8' }],
-	};
+		cards: [
+			{
+				card_type: 'Bronze',
+				card_id: '00222345-73e2-41a9-82c2-b91bb452acc8',
+			},
+		],
+	}; // the first Bronze card to be sold is worth 4 points
 	p1Socket.emit('sellCardFromHand', payload);
 
 	waitSockets = [
@@ -118,7 +127,7 @@ test('sellCardFromHand', async () => {
 	expect(p1HandUpdate.playerHand.length).toBe(4);
 	expect(p1ScoreUpdate).toEqual(p2ScoreUpdate);
 	expect(p1ScoreUpdate.playerScores[p2Socket.userID]).toBe(0);
-	expect(p1ScoreUpdate.playerScores[p1Socket.userID]).toBe(6);
+	expect(p1ScoreUpdate.playerScores[p1Socket.userID]).toBe(4);
 });
 
 test('cardSwap', async () => {
@@ -210,7 +219,7 @@ test('bonusPoints test', async () => {
 		waitSockets
 	);
 
-	console.log(p1HandUpdate, p1scoreUpdate, p2scoreUpdate);
+	// console.log(p1HandUpdate, p1scoreUpdate, p2scoreUpdate);
 
 	expect(p1HandUpdate).toMatchObject({
 		playerHand: expect.any(Array),
@@ -218,8 +227,10 @@ test('bonusPoints test', async () => {
 	expect(p1HandUpdate.playerHand.length).toBe(1);
 
 	expect(p1scoreUpdate).toEqual(p2scoreUpdate);
-	expect(p1scoreUpdate.playerScores[p1Socket.userID]).toBe(30);
+	expect(p1scoreUpdate.playerScores[p1Socket.userID]).toBe(20);
 	expect(p1scoreUpdate.playerScores[p2Socket.userID]).toBe(0);
+
+	// console.log(p1scoreUpdate);
 });
 
 test('endTurn', async () => {
@@ -236,38 +247,3 @@ test('endTurn', async () => {
 	expect(p1Turn).toBe(false);
 	expect(p2Turn).toBe(true);
 });
-
-// test("should send back and user id and session id", () => {
-//   clientSocket.on("connection", (arg) => {
-//     clientSocket.on("session", (data) => {
-//       console.log(data);
-//     });
-//     console.log(arg);
-//     done();
-//   });
-// });
-
-//   test("should work with an acknowledgement", (done) => {
-//     serverSocket.on("hi", (cb) => {
-//       cb("hola");
-//     });
-//     clientSocket.emit("hi", (arg) => {
-//       expect(arg).toBe("hola");
-//       done();
-//     });
-//   });
-
-//   test("should work with emitWithAck()", async () => {
-//     serverSocket.on("foo", (cb) => {
-//       cb("bar");
-//     });
-//     const result = await clientSocket.emitWithAck("foo");
-//     expect(result).toBe("bar");
-//   });
-
-//   test("should work with waitFor()", () => {
-//     clientSocket.emit("baz");
-
-//     return waitFor(serverSocket, "baz");
-//   });
-// });
