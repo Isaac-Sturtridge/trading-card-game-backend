@@ -6,6 +6,7 @@ const {
 	createCardsInDeck,
 	dealFromDeck,
 	cardValues,
+	createBonusPoints,
 } = require('./utils/gameSetup');
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
@@ -90,6 +91,7 @@ io.on('connection', (socket) => {
 		// console.log(result);
 		gameData.cardsInDeck = createCardsInDeck();
 		gameData.cardsOnTable = dealFromDeck(gameData.cardsInDeck, 5);
+		gameData.bonusPoints = createBonusPoints();
 		sessionStore.findAllSessions().forEach((session) => {
 			gameData.playerHands[session.userID] = dealFromDeck(
 				gameData.cardsInDeck,
@@ -206,6 +208,10 @@ io.on('connection', (socket) => {
 		io.sockets.emit('scoreUpdate', {
 			playerScores: gameData.playerScores,
 		});
+	});
+
+	socket.on('data', () => {
+		socket.emit('data', gameData);
 	});
 
 	socket.on('endTurn', () => {

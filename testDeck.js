@@ -97,6 +97,12 @@ const testDeck = [
 	},
 ];
 
+const testBonusPoints = {
+	5: [8, 8, 9, 10, 10],
+	4: [4, 4, 5, 5, 6, 6],
+	3: [1, 1, 2, 2, 2, 3, 3],
+};
+
 // cardsInDeck:
 // [
 // 	{
@@ -209,4 +215,4 @@ const testDeck = [
 // 	},
 // ]
 
-module.exports = testDeck;
+module.exports = { testDeck, testBonusPoints };

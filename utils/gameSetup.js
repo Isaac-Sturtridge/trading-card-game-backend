@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const testDeck = require('../testDeck');
+const { testDeck, testBonusPoints } = require('../testDeck');
 
 function shuffle(array) {
 	let currentIndex = array.length,
@@ -43,4 +43,18 @@ const cardValues = {
 	Bronze: 6,
 };
 
-module.exports = { createCardsInDeck, dealFromDeck, cardValues };
+const createBonusPoints = () => {
+	if (process.env.NODE_ENV === 'test') return testBonusPoints;
+	return {
+		5: shuffle([8, 8, 9, 10, 10]),
+		4: shuffle([4, 4, 5, 5, 6, 6]),
+		3: shuffle([1, 1, 2, 2, 2, 3, 3]),
+	};
+};
+
+bounsPoints = module.exports = {
+	createCardsInDeck,
+	dealFromDeck,
+	createBonusPoints,
+	cardValues,
+};
