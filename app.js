@@ -22,6 +22,13 @@ const io = new Server(server, {
 
 app.use(cors());
 
+const findCardType = (arr, id) => {
+	// console.log(arr, id);
+	return arr.find((card) => {
+		return card.card_id === id;
+	}).card_type;
+};
+
 const { InMemorySessionStore } = require('./sessionStore');
 const sessionStore = new InMemorySessionStore();
 
@@ -131,6 +138,7 @@ io.on('connection', (socket) => {
 
 	socket.on('addCardToHand', ({ cards }) => {
 		// take card form table and then move to hand,
+		console.log(cards, '============');
 		for (let card of cards) {
 			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
 				return element.card_id === card.card_id;
@@ -154,6 +162,16 @@ io.on('connection', (socket) => {
 		});
 		socket.emit('playerHandUpdate', {
 			playerHand: gameData.playerHands[socket.userID],
+		});
+
+		const msg = `${socket.username} took a ${findCardType(
+			gameData.playerHands[socket.userID],
+			cards[0].card_id
+		)} from the table`;
+		console.log(msg);
+
+		io.sockets.emit('gamePlayUpdates', {
+			msg,
 		});
 	});
 
@@ -191,10 +209,34 @@ io.on('connection', (socket) => {
 		socket.emit('playerHandUpdate', {
 			playerHand: gameData.playerHands[socket.userID],
 		});
+		const msg = `${socket.username} swaped ${handCards
+			.map((element) => {
+				// console.log(element);
+				return findCardType(gameData.cardsOnTable, element.card_id);
+			})
+			.join(', ')} for ${tableCards
+			.map((element) => {
+				return findCardType(
+					gameData.playerHands[socket.userID],
+					element.card_id
+				);
+			})
+			.join(', ')}`;
+
+		console.log(msg);
+
+		io.sockets.emit('gamePlayUpdates', {
+			msg,
+		});
 	});
 
 	socket.on('sellCardFromHand', ({ cards }) => {
 		// remove card from hand
+		const msg = `${socket.username} sold ${cards.length}x ${findCardType(
+			gameData.playerHands[socket.userID],
+			cards[0].card_id
+		)} card${cards.length !== 1 ? 's' : ''}`;
+
 		let salePoints = 0;
 		for (let card of cards) {
 			indexToRemove = gameData.playerHands[socket.userID].findIndex(
@@ -247,6 +289,10 @@ io.on('connection', (socket) => {
 		});
 		io.sockets.emit('tokenValuesUpdate', {
 			tokenValues: gameData.tokenValues,
+		});
+
+		io.sockets.emit('gamePlayUpdates', {
+			msg,
 		});
 	});
 

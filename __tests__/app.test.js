@@ -73,7 +73,12 @@ test('gameStart return a gameSetup with deck, table and hand cards for both play
 test('addCardToHand', async () => {
 	console.log('addCardToHand');
 	const payload = {
-		cards: [{ card_id: '75754222-025c-4046-ae89-5f69c4eef65d' }], // a gold card from the table
+		cards: [
+			{
+				card_type: 'Gold',
+				card_id: '75754222-025c-4046-ae89-5f69c4eef65d',
+			},
+		], // a gold card from the table
 	};
 	p2Socket.emit('addCardToHand', payload);
 
