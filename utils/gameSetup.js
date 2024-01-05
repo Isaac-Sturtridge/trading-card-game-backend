@@ -34,7 +34,7 @@ const createCardsInDeck = () => {
 		deck.push({ card_type: 'Spice', card_id: uuidv4() });
 	}
 	for (let i = 0; i < 8; i++) {
-		deck.push({ card_type: 'Textiles', card_id: uuidv4() });
+		deck.push({ card_type: 'Textile', card_id: uuidv4() });
 	}
 	for (let i = 0; i < 10; i++) {
 		deck.push({ card_type: 'Bronze', card_id: uuidv4() });
