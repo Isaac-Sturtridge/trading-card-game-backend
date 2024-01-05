@@ -28,8 +28,9 @@ const sessionStore = new InMemorySessionStore();
 let cardsInDeck, cardsOnTable, player1Hand, player2Hand;
 let gameData = { playerHands: {}, playerScores: {} };
 
-io.use((socket, next) => {
+io.use(async (socket, next) => {
 	const sessionID = socket.handshake.auth.sessionID;
+	const room = socket.handshake.auth.room;
 	if (sessionID) {
 		// find existing session
 		const session = sessionStore.findSession(sessionID);
@@ -38,6 +39,7 @@ io.use((socket, next) => {
 			socket.sessionID = sessionID;
 			socket.userID = session.userID;
 			socket.username = session.username;
+			socket.gameRoom = session.gameRoom;
 			return next();
 		}
 	}
@@ -49,13 +51,30 @@ io.use((socket, next) => {
 	socket.sessionID = randomId();
 	socket.userID = randomId();
 	socket.username = username;
+	socket.gameRoom = room;
+	socket.join(socket.gameRoom);
+
+	// io.of('/')
+	// 	.in(room)
+	// 	.clients((err, clients) => {
+	// 		console.log(clients);
+	// 	});
+	const clients = io.sockets.adapter.rooms.get('hello');
+	const numClients = clients ? clients.size : 0;
+	if (numClients > 2) {
+		next(new Error('already two players in the room'));
+	}
+	// console.log(clients, numClients, 'clients in room', io.engine.clientsCount);
 	next();
 });
 
 io.on('connection', (socket) => {
+	console.log(`${socket.id} has connected!`);
+	// console.log(socket.rooms, '<--- users rooms');
 	sessionStore.saveSession(socket.sessionID, {
 		userID: socket.userID,
 		username: socket.username,
+		gameRoom: socket.gameRoom,
 		connected: true,
 	});
 
@@ -65,9 +84,6 @@ io.on('connection', (socket) => {
 		userID: socket.userID,
 	});
 
-	socket.join(socket.userID);
-
-	console.log(`${socket.id} has connected!`);
 	const users = [];
 	sessionStore.findAllSessions().forEach((session) => {
 		users.push({
@@ -100,7 +116,7 @@ io.on('connection', (socket) => {
 				5
 			);
 			gameData.playerScores[session.userID] = 0;
-			socket.to(session.userID).emit('gameSetup', {
+			socket.to(session.gameRoom).emit('gameSetup', {
 				tokenValues: gameData.tokenValues,
 				cardsOnTable: gameData.cardsOnTable,
 				playerHand: gameData.playerHands[session.userID],
@@ -253,6 +269,7 @@ io.on('connection', (socket) => {
 			sessionStore.saveSession(socket.sessionID, {
 				userID: socket.userID,
 				username: socket.username,
+				gameRoom: socket.rooms,
 				connected: false,
 			});
 			console.log(socket.username, 'disconnected');
