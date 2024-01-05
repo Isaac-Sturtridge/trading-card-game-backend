@@ -22,14 +22,26 @@ const createCardsInDeck = () => {
 
 	const deck = [];
 	for (let i = 0; i < 6; i++) {
+		deck.push({ card_type: 'Diamond', card_id: uuidv4() });
+	}
+	for (let i = 0; i < 6; i++) {
 		deck.push({ card_type: 'Gold', card_id: uuidv4() });
 	}
-	for (let i = 0; i < 8; i++) {
+	for (let i = 0; i < 6; i++) {
 		deck.push({ card_type: 'Silver', card_id: uuidv4() });
+	}
+	for (let i = 0; i < 8; i++) {
+		deck.push({ card_type: 'Spice', card_id: uuidv4() });
+	}
+	for (let i = 0; i < 8; i++) {
+		deck.push({ card_type: 'Textiles', card_id: uuidv4() });
 	}
 	for (let i = 0; i < 10; i++) {
 		deck.push({ card_type: 'Bronze', card_id: uuidv4() });
 	}
+	// for (let i = 0; i < 11; i++) {
+	// 	deck.push({ card_type: 'Camels', card_id: uuidv4() });
+	// }
 	return shuffle(deck);
 };
 
