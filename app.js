@@ -28,7 +28,7 @@ const sessionStore = new InMemorySessionStore();
 let cardsInDeck, cardsOnTable, player1Hand, player2Hand;
 let gameData = { playerHands: {}, playerScores: {} };
 
-io.use(async (socket, next) => {
+io.use((socket, next) => {
 	const sessionID = socket.handshake.auth.sessionID;
 	const room = socket.handshake.auth.room;
 	if (sessionID) {
@@ -52,13 +52,9 @@ io.use(async (socket, next) => {
 	socket.userID = randomId();
 	socket.username = username;
 	socket.gameRoom = room;
+
 	socket.join(socket.gameRoom);
 
-	// io.of('/')
-	// 	.in(room)
-	// 	.clients((err, clients) => {
-	// 		console.log(clients);
-	// 	});
 	const clients = io.sockets.adapter.rooms.get('hello');
 	const numClients = clients ? clients.size : 0;
 	if (numClients > 2) {
@@ -248,6 +244,9 @@ io.on('connection', (socket) => {
 				saleBonusPoints,
 				salePoints,
 			},
+		});
+		io.sockets.emit('tokenValuesUpdate', {
+			tokenValues: gameData.tokenValues,
 		});
 	});
 
