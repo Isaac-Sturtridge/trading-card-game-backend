@@ -34,6 +34,7 @@ io.use((socket, next) => {
 		// find existing session
 		const session = sessionStore.findSession(sessionID);
 		if (session) {
+			console.log('session restored!');
 			socket.sessionID = sessionID;
 			socket.userID = session.userID;
 			socket.username = session.username;
@@ -195,11 +196,11 @@ io.on('connection', (socket) => {
 					1
 				);
 				// score update
-				try {
-					salePoints +=
-						gameData.tokenValues[CardRemoved[0].card_type].pop();
-				} catch (error) {
-					// no points for the card if the tokens have run out
+
+				tokenValue =
+					gameData.tokenValues[CardRemoved[0].card_type].pop();
+				if (tokenValue) {
+					salePoints += tokenValue;
 				}
 			} else {
 				// error selling a card which is not in the hand
