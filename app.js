@@ -113,18 +113,22 @@ io.on('connection', (socket) => {
 		gameData.cardsOnTable = dealFromDeck(gameData.cardsInDeck, 5);
 		gameData.bonusPoints = createBonusPoints();
 		gameData.tokenValues = tokenValues;
+		let otherUserId;
 		sessionStore.findAllSessions().forEach((session) => {
 			gameData.playerHands[session.userID] = dealFromDeck(
 				gameData.cardsInDeck,
 				5
 			);
 			gameData.playerScores[session.userID] = 0;
-			socket.to(session.gameRoom).emit('gameSetup', {
-				tokenValues: gameData.tokenValues,
-				cardsOnTable: gameData.cardsOnTable,
-				playerHand: gameData.playerHands[session.userID],
-				playerTurn: false,
-			});
+			if (session.userID !== socket.userID) {
+				otherUserId = session.userID;
+			}
+		});
+		socket.broadcast.emit('gameSetup', {
+			tokenValues: gameData.tokenValues,
+			cardsOnTable: gameData.cardsOnTable,
+			playerHand: gameData.playerHands[otherUserId],
+			playerTurn: false,
 		});
 		socket.emit('gameSetup', {
 			// cardsInDeck: gameData.cardsInDeck,
@@ -133,7 +137,7 @@ io.on('connection', (socket) => {
 			playerHand: gameData.playerHands[socket.userID],
 			playerTurn: true,
 		});
-		// console.log(gameData);
+		console.log(gameData);
 	});
 
 	socket.on('addCardToHand', ({ cards }) => {
@@ -303,24 +307,23 @@ io.on('connection', (socket) => {
 	socket.on('endTurn', () => {
 		socket.emit('playerTurn', false);
 		socket.broadcast.emit('playerTurn', true);
-		if( gameData.cardsInDeck.length === 0){
-			sockets.to(sockets.gameRoom).emit('gameOver',{
-				playerScores: gameData.playerScores,
-				msg: 'Cards in deck ran out'
-			})
-		}
-		let emptyCount = 0
-		Object.values(gameData.tokenValues).forEach((token)=> {
-			if(token.length === 0){
-				emptyCount++
-			}
-		}
-		)
-		if(emptyCount >= 3){
+		if (gameData.cardsInDeck.length === 0) {
 			sockets.to(sockets.gameRoom).emit('gameOver', {
 				playerScores: gameData.playerScores,
-				msg: 'token limit reached'
-			})
+				msg: 'Cards in deck ran out',
+			});
+		}
+		let emptyCount = 0;
+		Object.values(gameData.tokenValues).forEach((token) => {
+			if (token.length === 0) {
+				emptyCount++;
+			}
+		});
+		if (emptyCount >= 3) {
+			sockets.to(sockets.gameRoom).emit('gameOver', {
+				playerScores: gameData.playerScores,
+				msg: 'token limit reached',
+			});
 		}
 	});
 
