@@ -320,7 +320,7 @@ io.on('connection', (socket) => {
 			}
 		});
 		if (emptyCount >= 3) {
-			i0.sockets.emit('gameOver', {
+			io.sockets.emit('gameOver', {
 				playerScores: gameData.playerScores,
 				msg: 'token limit reached',
 			});
