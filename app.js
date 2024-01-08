@@ -308,7 +308,7 @@ io.on('connection', (socket) => {
 		socket.emit('playerTurn', false);
 		socket.broadcast.emit('playerTurn', true);
 		if (gameData.cardsInDeck.length === 0) {
-			sockets.to(sockets.gameRoom).emit('gameOver', {
+			io.sockets.emit('gameOver', {
 				playerScores: gameData.playerScores,
 				msg: 'Cards in deck ran out',
 			});
@@ -320,7 +320,7 @@ io.on('connection', (socket) => {
 			}
 		});
 		if (emptyCount >= 3) {
-			sockets.to(sockets.gameRoom).emit('gameOver', {
+			i0.sockets.emit('gameOver', {
 				playerScores: gameData.playerScores,
 				msg: 'token limit reached',
 			});
