@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require('mongoose')
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 const cors = require("cors");
@@ -12,15 +11,15 @@ const {
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
 const { getStats } = require("./controllers/api.controllers");
-const { getUsers, postUsers } = require("./controllers/user.controllers");
-
-//User Auth
-const bcrypt = require("bcrypt");
-const saltRounds = 10;
+const { getUsers, postUsers, loginUser, loggedInUser } = require("./controllers/user.controllers");
+const db = require("./db/connection")
 
 const app = express();
 const server = createServer(app);
 app.use(express.json())
+
+
+db();
 
 const io = new Server(server, {
   cors: {
@@ -28,28 +27,21 @@ const io = new Server(server, {
   },
 });
 
-const start = async () => {
-    try {
-      await mongoose.connect(
-        "mongodb://localhost:27017/tradingCards"
-      );
-      app.listen(3000, () => console.log("Server started on port 3000"));
-    } catch (error) {
-      console.error(error);
-      process.exit(1);
-    }
-  };
-
-start();
-
-
 app.use(cors());
+
 
 app.get("/stats", getStats);
 
 app.get("/users", getUsers)
 
-app.post("/users", postUsers);
+app.post("/register", postUsers);
+
+app.post("/login", loginUser)
+
+app.get("/logout", (req, res) => { 
+    req.session.destroy(); 
+    res.redirect("/users"); 
+}); 
 
 const findCardType = (arr, id) => {
   // console.log(arr, id);
@@ -80,7 +72,7 @@ io.use((socket, next) => {
       return next();
     }
   }
-  const username = socket.handshake.auth.username;
+  const username = loggedInUser ? loggedInUser : socket.handshake.auth.username;
   if (!username) {
     return next(new Error("invalid username"));
   }
