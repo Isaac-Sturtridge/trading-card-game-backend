@@ -245,13 +245,9 @@ io.on('connection', (socket) => {
 			count++;
 			// console.log(index, handCardsSwapped[index]);
 			if (Object.keys(handCardsSwapped).length === 1)
-				msg += ` ${handCardsSwapped[index]} ${index} card${
-					handCardsSwapped[index] !== 1 ? 's' : ''
-				}`;
+				msg += ` ${handCardsSwapped[index]} ${index}`;
 			else if (count === Object.keys(handCardsSwapped).length)
-				msg += ` and ${handCardsSwapped[index]} ${index} card${
-					handCardsSwapped[index] !== 1 ? 's' : ''
-				}`;
+				msg += ` and ${handCardsSwapped[index]} ${index}`;
 			else msg += ` ${handCardsSwapped[index]} ${index}, `;
 		}
 		count = 0;
@@ -331,11 +327,7 @@ io.on('connection', (socket) => {
 
 		// create msg for gamePlayUpdates
 		const cardTypeSold = findCardType(preSaleHand, cards[0].card_id);
-		let msg = `${socket.username} sold ${
-			cards.length
-		}x ${cardTypeSold} card${
-			cards.length !== 1 ? 's' : ''
-		} for ${salePoints} points`;
+		let msg = `${socket.username} sold ${cards.length}x ${cardTypeSold} for ${salePoints} points`;
 
 		if (saleBonusPoints !== 0) {
 			msg += ` and got ${saleBonusPoints} bonus points.`;

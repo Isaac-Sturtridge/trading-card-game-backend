@@ -39,9 +39,9 @@ const createCardsInDeck = () => {
 	for (let i = 0; i < 10; i++) {
 		deck.push({ card_type: 'Bronze', card_id: uuidv4() });
 	}
-	// for (let i = 0; i < 11; i++) {
-	// 	deck.push({ card_type: 'Camels', card_id: uuidv4() });
-	// }
+	for (let i = 0; i < 11; i++) {
+		deck.push({ card_type: 'Camel', card_id: uuidv4() });
+	}
 	return shuffle(deck);
 };
 
