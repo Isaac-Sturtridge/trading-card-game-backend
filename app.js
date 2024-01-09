@@ -134,7 +134,7 @@ io.on('connection', (socket) => {
 				}
 			}
 		});
-		socket.to(socket.gameRoom).emit('gameSetup', {
+		socket.broadcast.to(socket.gameRoom).emit('gameSetup', {
 			tokenValues: roomData.tokenValues,
 			cardsOnTable: roomData.cardsOnTable,
 			playerHand: roomData.playerHands[otherUserId],
@@ -180,6 +180,11 @@ io.on('connection', (socket) => {
 			playerHand: roomData.playerHands[socket.userID],
 		});
 
+		// send players hand length to other player
+		socket.broadcast.to(socket.gameRoom).emit('opponentHandUpdate', {
+			opponentHandUpdate: roomData.playerHands[socket.userID].length,
+		});
+
 		const msg = `${socket.username} took a ${findCardType(
 			roomData.playerHands[socket.userID],
 			cards[0].card_id
@@ -219,21 +224,54 @@ io.on('connection', (socket) => {
 			// console.log(cardRemoved);
 		}
 
-		const msg = `${socket.username} swaped ${handCards
-			.map((element) => {
-				// console.log(element);
-				return findCardType(roomData.cardsOnTable, element.card_id);
-			})
-			.join(', ')} for ${tableCards
-			.map((element) => {
-				return findCardType(
-					roomData.playerHands[socket.userID],
-					element.card_id
-				);
-			})
-			.join(', ')}`;
+		// msg creation
+		const handCardsSwapped = {};
+		for (let card of handCards) {
+			if (handCardsSwapped[card.card_type] !== undefined)
+				handCardsSwapped[card.card_type] += 1;
+			else handCardsSwapped[card.card_type] = 1;
+		}
+		const tableCardsSwapped = {};
+		for (let card of tableCards) {
+			if (tableCardsSwapped[card.card_type] !== undefined)
+				tableCardsSwapped[card.card_type] += 1;
+			else tableCardsSwapped[card.card_type] = 1;
+		}
 
-		console.log(msg);
+		// console.log(handCardsSwapped, handCardsSwapped.length);
+		let msg = `${socket.username} swaped`;
+		let count = 0;
+		for (let index in handCardsSwapped) {
+			count++;
+			// console.log(index, handCardsSwapped[index]);
+			if (Object.keys(handCardsSwapped).length === 1)
+				msg += ` ${handCardsSwapped[index]} ${index} card${
+					handCardsSwapped[index] !== 1 ? 's' : ''
+				}`;
+			else if (count === Object.keys(handCardsSwapped).length)
+				msg += ` and ${handCardsSwapped[index]} ${index} card${
+					handCardsSwapped[index] !== 1 ? 's' : ''
+				}`;
+			else msg += ` ${handCardsSwapped[index]} ${index}, `;
+		}
+		count = 0;
+		msg += ' for';
+		for (let index in tableCardsSwapped) {
+			count++;
+			// console.log(index, tableCardsSwapped[index]);
+			if (Object.keys(tableCardsSwapped).length === 1)
+				msg += ` ${tableCardsSwapped[index]} ${index} card${
+					tableCardsSwapped[index] !== 1 ? 's' : ''
+				}`;
+			else if (count === Object.keys(tableCardsSwapped).length)
+				msg += ` and ${tableCardsSwapped[index]} ${index} card${
+					tableCardsSwapped[index] !== 1 ? 's' : ''
+				}`;
+			else msg += ` ${tableCardsSwapped[index]} ${index}, `;
+		}
+		msg += '.';
+
+		// console.log(msg);
 
 		io.to(socket.gameRoom).emit('gamePlayUpdates', {
 			msg,
@@ -252,10 +290,7 @@ io.on('connection', (socket) => {
 		// remove card from hand
 		const roomData = gameData[socket.gameRoom];
 
-		const msg = `${socket.username} sold ${cards.length}x ${findCardType(
-			roomData.playerHands[socket.userID],
-			cards[0].card_id
-		)} card${cards.length !== 1 ? 's' : ''}`;
+		preSaleHand = [...roomData.playerHands[socket.userID]];
 
 		let salePoints = 0;
 		for (let card of cards) {
@@ -294,12 +329,32 @@ io.on('connection', (socket) => {
 
 		// console.log(roomData.playerScores);
 
+		// create msg for gamePlayUpdates
+		const cardTypeSold = findCardType(preSaleHand, cards[0].card_id);
+		let msg = `${socket.username} sold ${
+			cards.length
+		}x ${cardTypeSold} card${
+			cards.length !== 1 ? 's' : ''
+		} for ${salePoints} points`;
+
+		if (saleBonusPoints !== 0) {
+			msg += ` and got ${saleBonusPoints} bonus points.`;
+		} else msg += '.';
+
+		// msg += `. Total sale points: ${salePoints + saleBonusPoints}`;
+
 		io.to(socket.gameRoom).emit('gamePlayUpdates', {
 			msg,
 		});
 
+		// send gamePlayUpdates
 		socket.emit('playerHandUpdate', {
 			playerHand: roomData.playerHands[socket.userID],
+		});
+
+		// send players hand length to other player
+		socket.broadcast.to(socket.gameRoom).emit('opponentHandUpdate', {
+			opponentHandUpdate: roomData.playerHands[socket.userID].length,
 		});
 
 		io.to(socket.gameRoom).emit('scoreUpdate', {
@@ -321,23 +376,24 @@ io.on('connection', (socket) => {
 	});
 
 	socket.on('endTurn', () => {
+		const roomData = gameData[socket.gameRoom];
 		socket.emit('playerTurn', false);
 		socket.broadcast.emit('playerTurn', true);
-		if (gameData.cardsInDeck.length === 0) {
+		if (roomData.cardsInDeck.length === 0) {
 			io.sockets.emit('gameOver', {
-				playerScores: gameData.playerScores,
+				playerScores: roomData.playerScores,
 				msg: 'Cards in deck ran out',
 			});
 		}
 		let emptyCount = 0;
-		Object.values(gameData.tokenValues).forEach((token) => {
+		Object.values(roomData.tokenValues).forEach((token) => {
 			if (token.length === 0) {
 				emptyCount++;
 			}
 		});
 		if (emptyCount >= 3) {
 			io.sockets.emit('gameOver', {
-				playerScores: gameData.playerScores,
+				playerScores: roomData.playerScores,
 				msg: 'token limit reached',
 			});
 		}
