@@ -322,8 +322,27 @@ io.on('connection', (socket) => {
 
 	socket.on('endTurn', () => {
 		socket.emit('playerTurn', false);
-		socket.broadcast.to(socket.gameRoom).emit('playerTurn', true);
+		socket.broadcast.emit('playerTurn', true);
+		if (gameData.cardsInDeck.length === 0) {
+			io.sockets.emit('gameOver', {
+				playerScores: gameData.playerScores,
+				msg: 'Cards in deck ran out',
+			});
+		}
+		let emptyCount = 0;
+		Object.values(gameData.tokenValues).forEach((token) => {
+			if (token.length === 0) {
+				emptyCount++;
+			}
+		});
+		if (emptyCount >= 3) {
+			io.sockets.emit('gameOver', {
+				playerScores: gameData.playerScores,
+				msg: 'token limit reached',
+			});
+		}
 	});
+
 	socket.on('disconnect', async () => {
 		const matchingSockets = await io.in(socket.userID).allSockets();
 		const isDisconnected = matchingSockets.size === 0;

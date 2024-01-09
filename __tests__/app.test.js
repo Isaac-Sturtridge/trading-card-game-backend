@@ -241,6 +241,8 @@ test('bonusPoints test', async () => {
 	// console.log(p1scoreUpdate);
 });
 
+
+
 test('endTurn', async () => {
 	console.log('endTurn test');
 	p1Socket.emit('endTurn');
@@ -255,3 +257,4 @@ test('endTurn', async () => {
 	expect(p1Turn).toBe(false);
 	expect(p2Turn).toBe(true);
 });
+
