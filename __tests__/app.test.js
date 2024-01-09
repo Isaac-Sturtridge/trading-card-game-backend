@@ -20,8 +20,8 @@ beforeAll((done) => {
 		io.on('connection', (socket) => {
 			serverSocket = socket;
 		});
-		p1Socket.auth = { username: 'player1' };
-		p2Socket.auth = { username: 'player2' };
+		p1Socket.auth = { username: 'player1', room: process.env.NODE_ENV };
+		p2Socket.auth = { username: 'player2', room: process.env.NODE_ENV };
 		p1Socket.on('session', (data) => {
 			p1Socket.userID = data.userID;
 		});
@@ -37,10 +37,6 @@ beforeAll((done) => {
 });
 
 afterAll(async () => {
-	p1Socket.emit('data');
-	d = await waitFor(p1Socket, 'data');
-	console.log(d);
-
 	io.close();
 	p1Socket.disconnect();
 	p2Socket.disconnect();
@@ -68,6 +64,13 @@ test('gameStart return a gameSetup with deck, table and hand cards for both play
 		playerHand: expect.any(Array),
 		playerTurn: false,
 	});
+
+	expect(p1GameSetupData.cardsOnTable.length).toBe(5);
+	expect(p1GameSetupData.cardsOnTable).toEqual(p2GameSetupData.cardsOnTable);
+	expect(p1GameSetupData.playerHand).not.toEqual(p2GameSetupData.playerHand);
+
+	console.log(p1GameSetupData.playerHand);
+	console.log(p2GameSetupData.playerHand);
 });
 
 test('addCardToHand', async () => {

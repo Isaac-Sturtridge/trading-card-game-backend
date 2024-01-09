@@ -16,7 +16,7 @@ const server = createServer(app);
 
 const io = new Server(server, {
 	cors: {
-		origin: 'http://localhost:5173',
+		origin: '*',
 	},
 });
 
@@ -30,10 +30,10 @@ const findCardType = (arr, id) => {
 };
 
 const { InMemorySessionStore } = require('./sessionStore');
+const { set } = require('mongoose');
 const sessionStore = new InMemorySessionStore();
 
-let cardsInDeck, cardsOnTable, player1Hand, player2Hand;
-let gameData = { playerHands: {}, playerScores: {} };
+let gameData = {};
 
 io.use((socket, next) => {
 	const sessionID = socket.handshake.auth.sessionID;
@@ -42,11 +42,13 @@ io.use((socket, next) => {
 		// find existing session
 		const session = sessionStore.findSession(sessionID);
 		if (session) {
-			console.log('session restored!');
 			socket.sessionID = sessionID;
 			socket.userID = session.userID;
 			socket.username = session.username;
 			socket.gameRoom = session.gameRoom;
+			console.log(
+				`restored: ${socket.username} (${socket.userID}) joined ${socket.gameRoom} on session ${socket.sessionID}`
+			);
 			return next();
 		}
 	}
@@ -68,12 +70,18 @@ io.use((socket, next) => {
 		next(new Error('already two players in the room'));
 	}
 	// console.log(clients, numClients, 'clients in room', io.engine.clientsCount);
+	console.log(
+		`connected: ${socket.username} (${socket.userID}) joined ${socket.gameRoom} on session ${socket.sessionID}`
+	);
 	next();
 });
 
 io.on('connection', (socket) => {
-	console.log(`${socket.id} has connected!`);
+	// console.log(`${socket.id} has connected!`);
 	// console.log(socket.rooms, '<--- users rooms');
+	// console.log(
+	// 	`connected: ${socket.username} (${socket.userID}) joined ${socket.gameRoom} on session ${socket.sessionID}`
+	// );
 	sessionStore.saveSession(socket.sessionID, {
 		userID: socket.userID,
 		username: socket.username,
@@ -89,17 +97,13 @@ io.on('connection', (socket) => {
 
 	const users = [];
 	sessionStore.findAllSessions().forEach((session) => {
-		users.push({
-			userID: session.userID,
-			username: session.username,
-			connected: session.connected,
-		});
+		if (session.gameRoom === socket.gameRoom) users.push(session);
 	});
-	io.sockets.emit('users', users);
+	io.to(socket.gameRoom).emit('users', users);
 	// console.log(users);
 
 	// notify existing users
-	socket.broadcast.emit('user connected', {
+	socket.broadcast.to(socket.gameRoom).emit('user connected', {
 		userID: socket.userID,
 		username: socket.username,
 		connected: true,
@@ -109,72 +113,80 @@ io.on('connection', (socket) => {
 	socket.on('gameStart', () => {
 		// console.log('gameStart:', socket.username, socket.id);
 		// console.log(result);
-		gameData.cardsInDeck = createCardsInDeck();
-		gameData.cardsOnTable = dealFromDeck(gameData.cardsInDeck, 5);
-		gameData.bonusPoints = createBonusPoints();
-		gameData.tokenValues = tokenValues;
+		gameData[socket.gameRoom] = {};
+		const roomData = gameData[socket.gameRoom];
+		roomData.cardsInDeck = createCardsInDeck();
+		roomData.cardsOnTable = dealFromDeck(roomData.cardsInDeck, 5);
+		roomData.bonusPoints = createBonusPoints();
+		roomData.tokenValues = tokenValues;
+		roomData.playerHands = {};
+		roomData.playerScores = {};
 		let otherUserId;
 		sessionStore.findAllSessions().forEach((session) => {
-			gameData.playerHands[session.userID] = dealFromDeck(
-				gameData.cardsInDeck,
-				5
-			);
-			gameData.playerScores[session.userID] = 0;
-			if (session.userID !== socket.userID) {
-				otherUserId = session.userID;
+			if (session.gameRoom === socket.gameRoom) {
+				roomData.playerHands[session.userID] = dealFromDeck(
+					roomData.cardsInDeck,
+					5
+				);
+				roomData.playerScores[session.userID] = 0;
+				if (session.userID !== socket.userID) {
+					otherUserId = session.userID;
+				}
 			}
 		});
-		socket.broadcast.emit('gameSetup', {
-			tokenValues: gameData.tokenValues,
-			cardsOnTable: gameData.cardsOnTable,
-			playerHand: gameData.playerHands[otherUserId],
+		socket.to(socket.gameRoom).emit('gameSetup', {
+			tokenValues: roomData.tokenValues,
+			cardsOnTable: roomData.cardsOnTable,
+			playerHand: roomData.playerHands[otherUserId],
 			playerTurn: false,
 		});
 		socket.emit('gameSetup', {
-			// cardsInDeck: gameData.cardsInDeck,
-			tokenValues: gameData.tokenValues,
-			cardsOnTable: gameData.cardsOnTable,
-			playerHand: gameData.playerHands[socket.userID],
+			// cardsInDeck: roomData.cardsInDeck,
+			tokenValues: roomData.tokenValues,
+			cardsOnTable: roomData.cardsOnTable,
+			playerHand: roomData.playerHands[socket.userID],
 			playerTurn: true,
 		});
-		console.log(gameData);
+		// console.log(roomData);
 	});
 
 	socket.on('addCardToHand', ({ cards }) => {
 		// take card form table and then move to hand,
-		console.log(cards, '============');
+		// console.log(cards, '============');
+		const roomData = gameData[socket.gameRoom];
+
 		for (let card of cards) {
-			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
+			indexToRemove = roomData.cardsOnTable.findIndex((element) => {
 				return element.card_id === card.card_id;
 			});
-			cardRemoved = gameData.cardsOnTable.splice(indexToRemove, 1);
-			gameData.playerHands[socket.userID].push(...cardRemoved);
+			cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
+			roomData.playerHands[socket.userID].push(...cardRemoved);
 			// console.log(cardRemoved);
 		}
-		// console.log(gameData.cardsOnTable);
-		// console.log(gameData.playerHands[socket.userID]);
+		// console.log(roomData.cardsOnTable);
+		// console.log(roomData.playerHands[socket.userID]);
 
 		// take card from deck and move to table
-		gameData.cardsOnTable.push(
-			...dealFromDeck(gameData.cardsInDeck, cards.length)
+		roomData.cardsOnTable.push(
+			...dealFromDeck(roomData.cardsInDeck, cards.length)
 		);
-		// console.log(gameData.cardsOnTable);
+		// console.log(roomData.cardsOnTable);
 
-		// send new hand to player
-		io.sockets.emit('tableUpdate', {
-			cardsOnTable: gameData.cardsOnTable,
+		io.to(socket.gameRoom).emit('tableUpdate', {
+			cardsOnTable: roomData.cardsOnTable,
 		});
+		// send new hand to player
 		socket.emit('playerHandUpdate', {
-			playerHand: gameData.playerHands[socket.userID],
+			playerHand: roomData.playerHands[socket.userID],
 		});
 
 		const msg = `${socket.username} took a ${findCardType(
-			gameData.playerHands[socket.userID],
+			roomData.playerHands[socket.userID],
 			cards[0].card_id
 		)} from the table`;
 		console.log(msg);
 
-		io.sockets.emit('gamePlayUpdates', {
+		io.to(socket.gameRoom).emit('gamePlayUpdates', {
 			msg,
 		});
 	});
@@ -182,46 +194,40 @@ io.on('connection', (socket) => {
 	socket.on('cardSwap', ({ handCards, tableCards }) => {
 		// check if the handCards and the tableCards exist in the server copy
 		//remove from the hand and add to the table
+		const roomData = gameData[socket.gameRoom];
+
 		for (let card of handCards) {
-			indexToRemove = gameData.playerHands[socket.userID].findIndex(
+			indexToRemove = roomData.playerHands[socket.userID].findIndex(
 				(element) => {
 					return element.card_id === card.card_id;
 				}
 			);
-			cardRemoved = gameData.playerHands[socket.userID].splice(
+			cardRemoved = roomData.playerHands[socket.userID].splice(
 				indexToRemove,
 				1
 			);
-			gameData.cardsOnTable.push(...cardRemoved);
+			roomData.cardsOnTable.push(...cardRemoved);
 			// console.log(cardRemoved);
 		}
 		// remove from the table and add to the hand
 		for (let card of tableCards) {
-			indexToRemove = gameData.cardsOnTable.findIndex((element) => {
+			indexToRemove = roomData.cardsOnTable.findIndex((element) => {
 				return element.card_id === card.card_id;
 			});
-			cardRemoved = gameData.cardsOnTable.splice(indexToRemove, 1);
-			gameData.playerHands[socket.userID].push(...cardRemoved);
+			cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
+			roomData.playerHands[socket.userID].push(...cardRemoved);
 			// console.log(cardRemoved);
 		}
 
-		// send the new table to both players
-		io.sockets.emit('tableUpdate', {
-			cardsOnTable: gameData.cardsOnTable,
-		});
-		// send the new hand to emitting player
-		socket.emit('playerHandUpdate', {
-			playerHand: gameData.playerHands[socket.userID],
-		});
 		const msg = `${socket.username} swaped ${handCards
 			.map((element) => {
 				// console.log(element);
-				return findCardType(gameData.cardsOnTable, element.card_id);
+				return findCardType(roomData.cardsOnTable, element.card_id);
 			})
 			.join(', ')} for ${tableCards
 			.map((element) => {
 				return findCardType(
-					gameData.playerHands[socket.userID],
+					roomData.playerHands[socket.userID],
 					element.card_id
 				);
 			})
@@ -229,34 +235,44 @@ io.on('connection', (socket) => {
 
 		console.log(msg);
 
-		io.sockets.emit('gamePlayUpdates', {
+		io.to(socket.gameRoom).emit('gamePlayUpdates', {
 			msg,
+		});
+		// send the new table to both players
+		io.to(socket.gameRoom).emit('tableUpdate', {
+			cardsOnTable: roomData.cardsOnTable,
+		});
+		// send the new hand to emitting player
+		socket.emit('playerHandUpdate', {
+			playerHand: roomData.playerHands[socket.userID],
 		});
 	});
 
 	socket.on('sellCardFromHand', ({ cards }) => {
 		// remove card from hand
+		const roomData = gameData[socket.gameRoom];
+
 		const msg = `${socket.username} sold ${cards.length}x ${findCardType(
-			gameData.playerHands[socket.userID],
+			roomData.playerHands[socket.userID],
 			cards[0].card_id
 		)} card${cards.length !== 1 ? 's' : ''}`;
 
 		let salePoints = 0;
 		for (let card of cards) {
-			indexToRemove = gameData.playerHands[socket.userID].findIndex(
+			indexToRemove = roomData.playerHands[socket.userID].findIndex(
 				(element) => {
 					return element.card_id === card.card_id;
 				}
 			);
 			if (indexToRemove !== -1) {
-				CardRemoved = gameData.playerHands[socket.userID].splice(
+				CardRemoved = roomData.playerHands[socket.userID].splice(
 					indexToRemove,
 					1
 				);
 				// score update
 
 				tokenValue =
-					gameData.tokenValues[CardRemoved[0].card_type].pop();
+					roomData.tokenValues[CardRemoved[0].card_type].pop();
 				if (tokenValue) {
 					salePoints += tokenValue;
 				}
@@ -266,24 +282,28 @@ io.on('connection', (socket) => {
 		}
 
 		// add salePoints
-		gameData.playerScores[socket.userID] += salePoints;
+		roomData.playerScores[socket.userID] += salePoints;
 		// add bonusPoints
 		let saleBonusPoints = 0;
 		try {
-			saleBonusPoints = gameData.bonusPoints[cards.length].pop();
-			gameData.playerScores[socket.userID] += saleBonusPoints;
+			saleBonusPoints = roomData.bonusPoints[cards.length].pop();
+			roomData.playerScores[socket.userID] += saleBonusPoints;
 		} catch (error) {
 			// if no bonus points are left do nothing
 		}
 
-		console.log(gameData.playerScores);
+		// console.log(roomData.playerScores);
 
-		// send the new hand to player and update the scores
-		socket.emit('playerHandUpdate', {
-			playerHand: gameData.playerHands[socket.userID],
+		io.to(socket.gameRoom).emit('gamePlayUpdates', {
+			msg,
 		});
-		io.sockets.emit('scoreUpdate', {
-			playerScores: gameData.playerScores,
+
+		socket.emit('playerHandUpdate', {
+			playerHand: roomData.playerHands[socket.userID],
+		});
+
+		io.to(socket.gameRoom).emit('scoreUpdate', {
+			playerScores: roomData.playerScores,
 			saleStats: {
 				username: socket.username,
 				userID: socket.userID,
@@ -291,37 +311,35 @@ io.on('connection', (socket) => {
 				salePoints,
 			},
 		});
-		io.sockets.emit('tokenValuesUpdate', {
-			tokenValues: gameData.tokenValues,
-		});
-
-		io.sockets.emit('gamePlayUpdates', {
-			msg,
+		io.to(socket.gameRoom).emit('tokenValuesUpdate', {
+			tokenValues: roomData.tokenValues,
 		});
 	});
 
 	socket.on('data', () => {
-		socket.emit('data', gameData);
+		socket.emit('data', gameData[socket.gameRoom]);
 	});
 
 	socket.on('endTurn', () => {
 		socket.emit('playerTurn', false);
-		socket.broadcast.emit('playerTurn', true);
+		socket.broadcast.to(socket.gameRoom).emit('playerTurn', true);
 	});
 	socket.on('disconnect', async () => {
 		const matchingSockets = await io.in(socket.userID).allSockets();
 		const isDisconnected = matchingSockets.size === 0;
 		if (isDisconnected) {
 			// notify other users
-			socket.broadcast.emit('user disconnected', socket.userID);
+			socket.broadcast
+				.to(socket.gameRoom)
+				.emit('user disconnected', socket.userID);
 			// update the connection status of the session
 			sessionStore.saveSession(socket.sessionID, {
 				userID: socket.userID,
 				username: socket.username,
-				gameRoom: socket.rooms,
+				gameRoom: socket.gameRoom,
 				connected: false,
 			});
-			console.log(socket.username, 'disconnected');
+			console.log(`disconnected: ${socket.username}`);
 		}
 	});
 });
