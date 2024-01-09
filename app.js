@@ -10,6 +10,7 @@ const {
 } = require("./utils/gameSetup");
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
+const { getStats } = require("./controllers/api.controllers");
 
 //User Auth
 const bcrypt = require("bcrypt");
@@ -25,6 +26,8 @@ const io = new Server(server, {
 });
 
 app.use(cors());
+
+app.get("/stats", getStats);
 
 const findCardType = (arr, id) => {
   // console.log(arr, id);
