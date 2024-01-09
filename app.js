@@ -11,6 +11,7 @@ const {
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
 const { getStats } = require("./controllers/api.controllers");
+const { postUsers } = require("./controllers/user.controllers");
 
 //User Auth
 const bcrypt = require("bcrypt");
@@ -29,6 +30,8 @@ app.use(cors());
 
 app.get("/stats", getStats);
 
+app.post("/users", postUsers);
+
 const findCardType = (arr, id) => {
   // console.log(arr, id);
   return arr.find((card) => {
@@ -37,6 +40,7 @@ const findCardType = (arr, id) => {
 };
 
 const { InMemorySessionStore } = require("./sessionStore");
+
 const sessionStore = new InMemorySessionStore();
 
 let cardsInDeck, cardsOnTable, player1Hand, player2Hand;
