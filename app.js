@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require('mongoose')
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
 const cors = require("cors");
@@ -11,7 +12,7 @@ const {
 const crypto = require("crypto");
 const randomId = () => crypto.randomBytes(8).toString("hex");
 const { getStats } = require("./controllers/api.controllers");
-const { postUsers } = require("./controllers/user.controllers");
+const { getUsers, postUsers } = require("./controllers/user.controllers");
 
 //User Auth
 const bcrypt = require("bcrypt");
@@ -19,6 +20,7 @@ const saltRounds = 10;
 
 const app = express();
 const server = createServer(app);
+app.use(express.json())
 
 const io = new Server(server, {
   cors: {
@@ -26,9 +28,26 @@ const io = new Server(server, {
   },
 });
 
+const start = async () => {
+    try {
+      await mongoose.connect(
+        "mongodb://localhost:27017/tradingCards"
+      );
+      app.listen(3000, () => console.log("Server started on port 3000"));
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+  };
+
+start();
+
+
 app.use(cors());
 
 app.get("/stats", getStats);
+
+app.get("/users", getUsers)
 
 app.post("/users", postUsers);
 
