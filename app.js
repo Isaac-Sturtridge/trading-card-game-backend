@@ -52,8 +52,17 @@ io.use((socket, next) => {
 
 			const roomData = gameData[socket.gameRoom];
 			if (roomData.gameSetup) {
-				socket.emit('gameSetup', {
-					// cardsInDeck: roomData.cardsInDeck,
+				const users = [];
+				sessionStore.findAllSessions().forEach((session) => {
+					if (session.gameRoom === socket.gameRoom)
+						users.push(session);
+				});
+
+				socket.emit('resume', {
+					users: users,
+					room: socket.gameRoom,
+					cardsInDeck: roomData.cardsInDeck.length,
+					playerScores: roomData.playerScores,
 					tokenValues: roomData.tokenValues,
 					cardsOnTable: roomData.cardsOnTable,
 					playerHand: roomData.playerHands[socket.userID],
