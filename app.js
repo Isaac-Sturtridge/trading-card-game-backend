@@ -76,6 +76,104 @@ io.use((socket, next) => {
 	next();
 });
 
+const getMax = (obj) => {
+	const max = Math.max(...Object.values(obj));
+	return Object.keys(obj).filter((key) => obj[key] === max);
+};
+
+const gameOver = (socket, trigger) => {
+	const roomData = gameData[socket.gameRoom];
+
+	let msg;
+	if (trigger === '3TypesOfTokensExhausted')
+		msg = '3 types of good tokens have been earned.';
+	else msg = 'There are no cards in the deck to refill the market.';
+
+	// check which player had the most camels in their hand
+
+	camelCount = {};
+	Object.keys(roomData.playerHands).forEach((player) => {
+		camelCount[player] = roomData.playerHands[player].filter(
+			(card) => card.card_type === 'Camel'
+		).length;
+	});
+
+	// assign the camelBonusPlayer
+	mostCamels = getMax(camelCount);
+	let camelBonusPlayer;
+	// if there was a camelBonus add it
+	if (mostCamels.length === 1) {
+		camelBonusPlayer = mostCamels[0];
+		console.log(roomData.playerScores);
+		roomData.playerScores[camelBonusPlayer] += 5;
+		io.to(socket.gameRoom).emit('scoreUpdate', {
+			playerScores: roomData.playerScores,
+		});
+
+		io.to(socket.gameRoom).emit('gamePlayUpdates', {
+			msg: `${camelBonusPlayer} got 5 points for having the most camels in their herd.`,
+		});
+
+		console.log(
+			`${camelBonusPlayer} got 5 points for having the most camels in their herd.`
+		);
+		console.log(roomData.playerScores);
+	}
+
+	let winner, winReason;
+	// total score compare
+	highestScore = getMax(roomData.playerScores);
+	if (highestScore.length === 1) {
+		winner = highestScore[0];
+		winReason = 'Highest score';
+	}
+	// if tie, the player with the most bonus tokens earned
+	else {
+		bonusCount = {};
+		Object.keys(roomData.playerBonuses).forEach((player) => {
+			bonusCount[player] = roomData.playerBonuses[player].length;
+		});
+
+		// console.log(bonusCount);
+
+		mostBonus = getMax(bonusCount);
+		if (mostBonus.length === 1) {
+			winner = mostBonus[0];
+			winReason = 'Most bonus tokens';
+		}
+		// if still tie, the player with the most goods tokens
+		else {
+			goodsCount = {};
+			Object.keys(roomData.playerTokens).forEach((player) => {
+				goodsCount[player] = roomData.playerTokens[player].length;
+			});
+
+			// console.log(goodsCount);
+
+			mostGoods = getMax(goodsCount);
+			if (mostGoods.length === 1) {
+				winner = mostGoods[0];
+				winReason = 'Most goods tokens';
+			}
+			// call it a draw!
+			else {
+				winner = 'No one!';
+				winReason =
+					'The total points, number of bonus tokens and the number of goods tokens were equal!';
+			}
+		}
+	}
+
+	io.to(socket.gameRoom).emit('gameOver', {
+		playerScores: roomData.playerScores,
+		gameOverReason: msg,
+		camelBonusPlayer: camelBonusPlayer,
+		msg,
+		winner,
+		winReason,
+	});
+};
+
 io.on('connection', (socket) => {
 	// console.log(`${socket.id} has connected!`);
 	// console.log(socket.rooms, '<--- users rooms');
@@ -121,6 +219,8 @@ io.on('connection', (socket) => {
 		roomData.tokenValues = tokenValues;
 		roomData.playerHands = {};
 		roomData.playerScores = {};
+		roomData.playerTokens = {};
+		roomData.playerBonuses = {};
 		let otherUserId;
 		sessionStore.findAllSessions().forEach((session) => {
 			if (session.gameRoom === socket.gameRoom) {
@@ -129,6 +229,8 @@ io.on('connection', (socket) => {
 					5
 				);
 				roomData.playerScores[session.userID] = 0;
+				roomData.playerTokens[session.userID] = [];
+				roomData.playerBonuses[session.userID] = [];
 				if (session.userID !== socket.userID) {
 					otherUserId = session.userID;
 				}
@@ -147,6 +249,18 @@ io.on('connection', (socket) => {
 			playerHand: roomData.playerHands[socket.userID],
 			playerTurn: true,
 		});
+
+		// camelCount2 = roomData.playerHands[otherUserId].reduce(
+		// 	(obj, item) => (
+		// 		(obj[item.card_type] =
+		// 			obj[item.card_type] === undefined
+		// 				? 0
+		// 				: obj[item.card_type] + 1),
+		// 		obj
+		// 	),
+		// 	{}
+		// );
+		// console.log(camelCount2);
 		// console.log(roomData);
 	});
 
@@ -154,6 +268,9 @@ io.on('connection', (socket) => {
 		// take card form table and then move to hand,
 		// console.log(cards, '============');
 		const roomData = gameData[socket.gameRoom];
+
+		let deckDepleted;
+		if (roomData.cardsInDeck.length < cards.length) deckDepleted = true;
 
 		for (let card of cards) {
 			indexToRemove = roomData.cardsOnTable.findIndex((element) => {
@@ -185,14 +302,22 @@ io.on('connection', (socket) => {
 			opponentHandUpdate: roomData.playerHands[socket.userID].length,
 		});
 
-		const msg = `${socket.username} took a ${findCardType(
+		const msg = `${socket.username} took ${cards.length} ${findCardType(
 			roomData.playerHands[socket.userID],
 			cards[0].card_id
-		)} from the table`;
-		console.log(msg);
+		)} from the market`;
 
 		io.to(socket.gameRoom).emit('gamePlayUpdates', {
 			msg,
+		});
+
+		if (deckDepleted) {
+			gameOver(socket);
+			return;
+		}
+
+		io.to(socket.gameRoom).emit('cardsInDeckUpdate', {
+			cardsInDeck: roomData.cardsInDeck.length,
 		});
 	});
 
@@ -256,13 +381,9 @@ io.on('connection', (socket) => {
 			count++;
 			// console.log(index, tableCardsSwapped[index]);
 			if (Object.keys(tableCardsSwapped).length === 1)
-				msg += ` ${tableCardsSwapped[index]} ${index} card${
-					tableCardsSwapped[index] !== 1 ? 's' : ''
-				}`;
+				msg += ` ${tableCardsSwapped[index]} ${index}`;
 			else if (count === Object.keys(tableCardsSwapped).length)
-				msg += ` and ${tableCardsSwapped[index]} ${index} card${
-					tableCardsSwapped[index] !== 1 ? 's' : ''
-				}`;
+				msg += ` and ${tableCardsSwapped[index]} ${index}`;
 			else msg += ` ${tableCardsSwapped[index]} ${index}, `;
 		}
 		msg += '.';
@@ -306,6 +427,7 @@ io.on('connection', (socket) => {
 					roomData.tokenValues[CardRemoved[0].card_type].pop();
 				if (tokenValue) {
 					salePoints += tokenValue;
+					roomData.playerTokens[socket.userID].push(tokenValue);
 				}
 			} else {
 				// error selling a card which is not in the hand
@@ -319,6 +441,7 @@ io.on('connection', (socket) => {
 		try {
 			saleBonusPoints = roomData.bonusPoints[cards.length].pop();
 			roomData.playerScores[socket.userID] += saleBonusPoints;
+			roomData.playerBonuses[socket.userID].push(saleBonusPoints);
 		} catch (error) {
 			// if no bonus points are left do nothing
 		}
@@ -361,22 +484,8 @@ io.on('connection', (socket) => {
 		io.to(socket.gameRoom).emit('tokenValuesUpdate', {
 			tokenValues: roomData.tokenValues,
 		});
-	});
 
-	socket.on('data', () => {
-		socket.emit('data', gameData[socket.gameRoom]);
-	});
-
-	socket.on('endTurn', () => {
-		const roomData = gameData[socket.gameRoom];
-		socket.emit('playerTurn', false);
-		socket.broadcast.emit('playerTurn', true);
-		if (roomData.cardsInDeck.length === 0) {
-			io.sockets.emit('gameOver', {
-				playerScores: roomData.playerScores,
-				msg: 'Cards in deck ran out',
-			});
-		}
+		// check if three or more token types have been depleted
 		let emptyCount = 0;
 		Object.values(roomData.tokenValues).forEach((token) => {
 			if (token.length === 0) {
@@ -384,11 +493,17 @@ io.on('connection', (socket) => {
 			}
 		});
 		if (emptyCount >= 3) {
-			io.sockets.emit('gameOver', {
-				playerScores: roomData.playerScores,
-				msg: 'token limit reached',
-			});
+			gameOver(socket, '3TypesOfTokensExhausted');
 		}
+	});
+
+	socket.on('data', () => {
+		socket.emit('data', gameData[socket.gameRoom]);
+	});
+
+	socket.on('endTurn', () => {
+		socket.emit('playerTurn', false);
+		socket.broadcast.emit('playerTurn', true);
 	});
 
 	socket.on('disconnect', async () => {
