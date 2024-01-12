@@ -49,14 +49,16 @@ const dealFromDeck = (cardsInDeck, n) => {
 	return cardsInDeck.splice(0, n);
 };
 
-const tokenValues = {
-	Diamond: [5, 5, 5, 7, 7],
-	Gold: [5, 5, 5, 6, 6],
-	Silver: [5, 5, 5, 5, 5],
-	Textile: [1, 1, 2, 2, 3, 3, 5],
-	Spice: [1, 1, 2, 2, 3, 3, 5],
-	// Leather: [1, 1, 1, 1, 1, 1, 2, 3, 4],
-	Bronze: [1, 1, 1, 1, 1, 1, 2, 3, 4],
+const getTokens = () => {
+	return {
+		Diamond: [5, 5, 5, 7, 7],
+		Gold: [5, 5, 5, 6, 6],
+		Silver: [5, 5, 5, 5, 5],
+		Textile: [1, 1, 2, 2, 3, 3, 5],
+		Spice: [1, 1, 2, 2, 3, 3, 5],
+		// Leather: [1, 1, 1, 1, 1, 1, 2, 3, 4],
+		Bronze: [1, 1, 1, 1, 1, 1, 2, 3, 4],
+	};
 };
 
 const createBonusPoints = () => {
@@ -72,5 +74,5 @@ module.exports = {
 	createCardsInDeck,
 	dealFromDeck,
 	createBonusPoints,
-	tokenValues,
+	getTokens,
 };

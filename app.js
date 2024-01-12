@@ -6,7 +6,7 @@ const {
 	createCardsInDeck,
 	dealFromDeck,
 	createBonusPoints,
-	tokenValues,
+	getTokens,
 } = require('./utils/gameSetup');
 const crypto = require('crypto');
 const randomId = () => crypto.randomBytes(8).toString('hex');
@@ -51,7 +51,7 @@ io.use((socket, next) => {
 			);
 
 			const roomData = gameData[socket.gameRoom];
-			if (roomData.gameSetup) {
+			if (roomData.gameSetup !== undefined) {
 				const users = [];
 				sessionStore.findAllSessions().forEach((session) => {
 					if (session.gameRoom === socket.gameRoom)
@@ -241,7 +241,7 @@ io.on('connection', (socket) => {
 		roomData.cardsInDeck = createCardsInDeck();
 		roomData.cardsOnTable = dealFromDeck(roomData.cardsInDeck, 5);
 		roomData.bonusPoints = createBonusPoints();
-		roomData.tokenValues = { ...tokenValues };
+		roomData.tokenValues = getTokens();
 		roomData.playerHands = {};
 		roomData.playerScores = {};
 		roomData.playerTokens = {};
@@ -530,9 +530,11 @@ io.on('connection', (socket) => {
 
 	socket.on('endTurn', () => {
 		const roomData = gameData[socket.gameRoom];
-		roomData.lastTurn = socket.userID;
-		socket.emit('playerTurn', false);
-		socket.broadcast.emit('playerTurn', true);
+		if (roomData !== undefined) {
+			roomData.lastTurn = socket.userID;
+			socket.emit('playerTurn', false);
+			socket.broadcast.emit('playerTurn', true);
+		}
 	});
 
 	socket.on('disconnect', async () => {
