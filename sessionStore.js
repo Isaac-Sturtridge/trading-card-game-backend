@@ -1,28 +1,32 @@
 /* abstract */ class SessionStore {
-  findSession(id) {}
-  saveSession(id, session) {}
-  findAllSessions() {}
+	findSession(id) {}
+	saveSession(id, session) {}
+	findAllSessions() {}
 }
 
 class InMemorySessionStore extends SessionStore {
-  constructor() {
-    super();
-    this.sessions = new Map();
-  }
+	constructor() {
+		super();
+		this.sessions = new Map();
+	}
 
-  findSession(id) {
-    return this.sessions.get(id);
-  }
+	findSession(id) {
+		return this.sessions.get(id);
+	}
 
-  saveSession(id, session) {
-    this.sessions.set(id, session);
-  }
+	saveSession(id, session) {
+		this.sessions.set(id, session);
+	}
 
-  findAllSessions() {
-    return [...this.sessions.values()];
-  }
+	findAllSessions() {
+		return [...this.sessions.values()];
+	}
+
+	deleteSession(id) {
+		this.sessions.delete(id);
+	}
 }
 
 module.exports = {
-  InMemorySessionStore
+	InMemorySessionStore,
 };

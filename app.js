@@ -193,6 +193,9 @@ const gameOver = (socket, trigger) => {
 		winner,
 		winReason,
 	});
+
+	sessionStore.deleteSession(socket.sessionID);
+	delete gameData[socket.gameRoom];
 };
 
 io.on('connection', (socket) => {
@@ -300,7 +303,7 @@ io.on('connection', (socket) => {
 			indexToRemove = roomData.cardsOnTable.findIndex((element) => {
 				return element.card_id === card.card_id;
 			});
-			cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
+			const cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
 			roomData.playerHands[socket.userID].push(...cardRemoved);
 			// console.log(cardRemoved);
 		}
@@ -356,7 +359,7 @@ io.on('connection', (socket) => {
 					return element.card_id === card.card_id;
 				}
 			);
-			cardRemoved = roomData.playerHands[socket.userID].splice(
+			const cardRemoved = roomData.playerHands[socket.userID].splice(
 				indexToRemove,
 				1
 			);
@@ -368,7 +371,7 @@ io.on('connection', (socket) => {
 			indexToRemove = roomData.cardsOnTable.findIndex((element) => {
 				return element.card_id === card.card_id;
 			});
-			cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
+			const cardRemoved = roomData.cardsOnTable.splice(indexToRemove, 1);
 			roomData.playerHands[socket.userID].push(...cardRemoved);
 			// console.log(cardRemoved);
 		}
@@ -441,13 +444,13 @@ io.on('connection', (socket) => {
 				}
 			);
 			if (indexToRemove !== -1) {
-				CardRemoved = roomData.playerHands[socket.userID].splice(
+				const CardRemoved = roomData.playerHands[socket.userID].splice(
 					indexToRemove,
 					1
 				);
 				// score update
 
-				tokenValue =
+				const tokenValue =
 					roomData.tokenValues[CardRemoved[0].card_type].pop();
 				if (tokenValue) {
 					salePoints += tokenValue;
