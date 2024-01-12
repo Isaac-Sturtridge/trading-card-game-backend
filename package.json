@@ -19,7 +19,8 @@
   "scripts": {
     "test": "jest",
     "start": "node listen.js",
-    "server": "nodemon listen.js"
+    "server": "nodemon listen.js",
+    "seed-prod": "NODE_ENV=production"
   },
   "keywords": [],
   "author": "",
