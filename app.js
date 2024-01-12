@@ -50,27 +50,29 @@ io.use((socket, next) => {
 				`restored: ${socket.username} (${socket.userID}) joined ${socket.gameRoom} on session ${socket.sessionID}`
 			);
 
-			const roomData = gameData[socket.gameRoom];
-			if (roomData.gameSetup !== undefined) {
-				const users = [];
-				sessionStore.findAllSessions().forEach((session) => {
-					if (session.gameRoom === socket.gameRoom)
-						users.push(session);
-				});
+			try {
+				const roomData = gameData[socket.gameRoom];
+				if (roomData.gameSetup) {
+					const users = [];
+					sessionStore.findAllSessions().forEach((session) => {
+						if (session.gameRoom === socket.gameRoom)
+							users.push(session);
+					});
 
-				socket.emit('resume', {
-					users: users,
-					room: socket.gameRoom,
-					cardsInDeck: roomData.cardsInDeck.length,
-					playerScores: roomData.playerScores,
-					tokenValues: roomData.tokenValues,
-					cardsOnTable: roomData.cardsOnTable,
-					playerHand: roomData.playerHands[socket.userID],
-					playerTurn:
-						roomData.lastTurn === socket.userID ? false : true,
-				});
-			}
-			return next();
+					socket.emit('resume', {
+						users: users,
+						room: socket.gameRoom,
+						cardsInDeck: roomData.cardsInDeck.length,
+						playerScores: roomData.playerScores,
+						tokenValues: roomData.tokenValues,
+						cardsOnTable: roomData.cardsOnTable,
+						playerHand: roomData.playerHands[socket.userID],
+						playerTurn:
+							roomData.lastTurn === socket.userID ? false : true,
+					});
+					return next();
+				}
+			} catch {}
 		}
 	}
 	const username = socket.handshake.auth.username;
@@ -194,7 +196,10 @@ const gameOver = (socket, trigger) => {
 		winReason,
 	});
 
-	sessionStore.deleteSession(socket.sessionID);
+	sessionStore.findAllSessions().forEach((session) => {
+		if (session.gameRoom === socket.gameRoom)
+			sessionStore.deleteSession(session);
+	});
 	delete gameData[socket.gameRoom];
 };
 
