@@ -15,7 +15,7 @@
   "name": "trading-card-game-backend",
   "description": "Backend project",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "listen.js",
   "scripts": {
     "test": "jest",
     "start": "node listen.js",
