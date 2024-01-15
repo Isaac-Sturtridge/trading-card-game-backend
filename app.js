@@ -87,14 +87,14 @@ io.use((socket, next) => {
 
 	socket.join(socket.gameRoom);
 
-	const clients = io.sockets.adapter.rooms.get('hello');
+	const clients = io.sockets.adapter.rooms.get(socket.gameRoom);
 	const numClients = clients ? clients.size : 0;
 	if (numClients > 2) {
 		next(new Error('already two players in the room'));
 	}
 	// console.log(clients, numClients, 'clients in room', io.engine.clientsCount);
 	console.log(
-		`connected: ${socket.username} (${socket.userID}) joined ${socket.gameRoom} on session ${socket.sessionID}`
+		`connected: ${socket.username}; userID: ${socket.userID}, room: ${socket.gameRoom} sessionID: ${socket.sessionID}, socketID: ${socket.id}`
 	);
 	next();
 });
@@ -127,7 +127,7 @@ const gameOver = (socket, trigger) => {
 	// if there was a camelBonus add it
 	if (mostCamels.length === 1) {
 		camelBonusPlayer = mostCamels[0];
-		console.log(roomData.playerScores);
+		// console.log(roomData.playerScores);
 		roomData.playerScores[camelBonusPlayer] += 5;
 		io.to(socket.gameRoom).emit('scoreUpdate', {
 			playerScores: roomData.playerScores,
@@ -137,10 +137,10 @@ const gameOver = (socket, trigger) => {
 			msg: `${camelBonusPlayer} got 5 points for having the most camels in their herd.`,
 		});
 
-		console.log(
-			`${camelBonusPlayer} got 5 points for having the most camels in their herd.`
-		);
-		console.log(roomData.playerScores);
+		// console.log(
+		// 	`${camelBonusPlayer} got 5 points for having the most camels in their herd.`
+		// );
+		// console.log(roomData.playerScores);
 	}
 
 	let winner, winReason;
@@ -201,6 +201,7 @@ const gameOver = (socket, trigger) => {
 			sessionStore.deleteSession(session);
 	});
 	delete gameData[socket.gameRoom];
+	io.socketsLeave(socket.gameRoom);
 };
 
 io.on('connection', (socket) => {
@@ -213,6 +214,7 @@ io.on('connection', (socket) => {
 		userID: socket.userID,
 		username: socket.username,
 		gameRoom: socket.gameRoom,
+		id: socket.id,
 		connected: true,
 	});
 
@@ -241,7 +243,16 @@ io.on('connection', (socket) => {
 	socket.on('gameStart', () => {
 		// console.log('gameStart:', socket.username, socket.id);
 		// console.log(result);
-		gameData[socket.gameRoom] = { gameSetup: false, lastTurn: '' };
+		const socketIDs = Array.from(
+			io.sockets.adapter.rooms.get(socket.gameRoom)
+		);
+		gameData[socket.gameRoom] = {
+			gameSetup: false,
+			lastTurn:
+				Math.random() >= 0.5
+					? sessionStore.findUserID(socketIDs[0])
+					: sessionStore.findUserID(socketIDs[1]),
+		};
 		const roomData = gameData[socket.gameRoom];
 		roomData.cardsInDeck = createCardsInDeck();
 		roomData.cardsOnTable = dealFromDeck(roomData.cardsInDeck, 5);
@@ -251,49 +262,27 @@ io.on('connection', (socket) => {
 		roomData.playerScores = {};
 		roomData.playerTokens = {};
 		roomData.playerBonuses = {};
-		let otherUserId;
-		sessionStore.findAllSessions().forEach((session) => {
-			if (session.gameRoom === socket.gameRoom) {
-				roomData.playerHands[session.userID] = dealFromDeck(
-					roomData.cardsInDeck,
-					5
-				);
-				roomData.playerScores[session.userID] = 0;
-				roomData.playerTokens[session.userID] = [];
-				roomData.playerBonuses[session.userID] = [];
-				if (session.userID !== socket.userID) {
-					otherUserId = session.userID;
-				}
-			}
-		});
-		socket.broadcast.to(socket.gameRoom).emit('gameSetup', {
-			tokenValues: roomData.tokenValues,
-			cardsOnTable: roomData.cardsOnTable,
-			playerHand: roomData.playerHands[otherUserId],
-			playerTurn: false,
-		});
-		socket.emit('gameSetup', {
-			// cardsInDeck: roomData.cardsInDeck,
-			tokenValues: roomData.tokenValues,
-			cardsOnTable: roomData.cardsOnTable,
-			playerHand: roomData.playerHands[socket.userID],
-			playerTurn: true,
-		});
+
+		for (let socketID of io.sockets.adapter.rooms.get(socket.gameRoom)) {
+			let client = sessionStore.findUserID(socketID);
+			// console.log(client);
+			roomData.playerHands[client] = dealFromDeck(
+				roomData.cardsInDeck,
+				5
+			);
+			roomData.playerScores[client] = 0;
+			roomData.playerTokens[client] = [];
+			roomData.playerBonuses[client] = [];
+
+			io.to(socketID).emit('gameSetup', {
+				tokenValues: roomData.tokenValues,
+				cardsOnTable: roomData.cardsOnTable,
+				playerHand: roomData.playerHands[client],
+				playerTurn: roomData.lastTurn === client ? false : true,
+			});
+		}
 
 		roomData['gameSetup'] = true;
-
-		// camelCount2 = roomData.playerHands[otherUserId].reduce(
-		// 	(obj, item) => (
-		// 		(obj[item.card_type] =
-		// 			obj[item.card_type] === undefined
-		// 				? 0
-		// 				: obj[item.card_type] + 1),
-		// 		obj
-		// 	),
-		// 	{}
-		// );
-		// console.log(camelCount2);
-		// console.log(roomData);
 	});
 
 	socket.on('addCardToHand', ({ cards }) => {
@@ -453,6 +442,7 @@ io.on('connection', (socket) => {
 					indexToRemove,
 					1
 				);
+				// console.log(roomData.playerHands[socket.userID]);
 				// score update
 
 				const tokenValue =
@@ -536,6 +526,7 @@ io.on('connection', (socket) => {
 	socket.on('endTurn', () => {
 		const roomData = gameData[socket.gameRoom];
 		if (roomData !== undefined) {
+			// console.log(roomData.lastTurn);
 			roomData.lastTurn = socket.userID;
 			socket.emit('playerTurn', false);
 			socket.broadcast.emit('playerTurn', true);
